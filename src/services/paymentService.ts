@@ -1,11 +1,13 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { performance } from 'node:perf_hooks';
 import { clock } from '../clock.js';
 import { generateCode } from '../codes.js';
 import { config } from '../config.js';
 import { pool, withTx } from '../db.js';
 import { AppError } from '../errors.js';
-import type { TicketCategory } from './eventService.js';
+import { createEvent, type TicketCategory } from './eventService.js';
 import {
+  createOrder,
   type OrderStatus,
   type OrderTicketItem,
   releaseOrderQuota,
@@ -385,4 +387,77 @@ export async function listTicketsByBuyer(
     event_date: row.event_date.toISOString(),
     category: row.category,
   }));
+}
+
+export interface ConcurrencyDemoResult {
+  event_id: string;
+  total_requests: number;
+  quota: number;
+  created: number;
+  conflicts: number;
+  other: number;
+  remaining_quota: number;
+  elapsed_ms: number;
+}
+
+export async function runConcurrencyDemo(): Promise<ConcurrencyDemoResult> {
+  const event = await createEvent({
+    title: 'BoxOffice Burst 200',
+    description: '200 concurrent orders against 100 REGULER tickets',
+    venue: 'Concurrency Bench',
+    event_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    max_tickets_per_buyer: 4,
+    ticket_types: [
+      { category: 'REGULER', price: 150000, quota: 100 },
+      { category: 'VIP', price: 350000, quota: 20 },
+    ],
+  });
+
+  const reguler = event.ticket_types.find((t) => t.category === 'REGULER')!;
+  const startedAt = performance.now();
+
+  // Dispatch directly against the service layer so browser HTTP connection caps do not mask concurrency
+  const settled = await Promise.allSettled(
+    Array.from({ length: 200 }, (_, i) =>
+      createOrder({
+        buyerId: `buyer-burst-${String(i + 1).padStart(3, '0')}`,
+        ticketTypeId: reguler.id,
+        quantity: 1,
+      })
+    )
+  );
+  const elapsedMs = Math.round(performance.now() - startedAt);
+
+  let created = 0;
+  let conflicts = 0;
+  let other = 0;
+
+  for (const item of settled) {
+    if (item.status === 'fulfilled') {
+      created++;
+    } else if (
+      item.reason instanceof AppError &&
+      item.reason.statusCode === 409
+    ) {
+      conflicts++;
+    } else {
+      other++;
+    }
+  }
+
+  const quotaRes = await pool.query<{ available_quota: number }>(
+    'SELECT available_quota FROM ticket_types WHERE id = $1',
+    [reguler.id]
+  );
+
+  return {
+    event_id: event.id,
+    total_requests: 200,
+    quota: 100,
+    created,
+    conflicts,
+    other,
+    remaining_quota: quotaRes.rows[0].available_quota,
+    elapsed_ms: elapsedMs,
+  };
 }

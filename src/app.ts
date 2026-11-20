@@ -1,3 +1,5 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import express, { type Request } from 'express';
 import { checkDb } from './db.js';
 import { errorHandler } from './errors.js';
@@ -28,6 +30,12 @@ export function createApp() {
     }
     res.json({ status: 'ok', db: 'up' });
   });
+
+  const publicDir = path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    '../public'
+  );
+  app.use(express.static(publicDir));
 
   app.use('/api/events', eventsRouter);
   app.use('/api/orders', ordersRouter);

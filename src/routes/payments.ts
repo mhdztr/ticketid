@@ -5,6 +5,7 @@ import { AppError } from '../errors.js';
 import {
   listPaymentWebhooks,
   processPaymentWebhook,
+  runConcurrencyDemo,
   simulatePayment,
   verifyWebhookSignature,
 } from '../services/paymentService.js';
@@ -56,4 +57,9 @@ paymentsRouter.get('/webhooks', async (req, res) => {
   const orderId = orderIdQuerySchema.parse(req.query.order_id);
   const webhooks = await listPaymentWebhooks(orderId);
   res.json({ webhooks });
+});
+
+paymentsRouter.post('/concurrency-demo', async (_req, res) => {
+  const result = await runConcurrencyDemo();
+  res.json(result);
 });
