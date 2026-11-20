@@ -90,7 +90,7 @@ Nilai `mode` yang didukung: `"normal"`, `"duplicate"`, `"late"`, atau `"failed"`
 
 ### 3. Lewat Web Console
 
-Buka `http://localhost:3000`, pilih tab **Orders**, lalu klik **Pay Webhook**, **Duplicate Webhook**, atau **Late Webhook** langsung di baris pesanan.
+Buka `http://localhost:3000`, pilih tab **Orders**, lalu klik **Pay**, **Re-pay**, atau **Late** langsung di baris pesanan.
 
 ---
 
