@@ -286,7 +286,7 @@ function switchBuyer(nextBuyer) {
   if (!clean || clean === state.buyerId) return;
   state.buyerId = clean;
   localStorage.setItem('ticketid_buyer', clean);
-  el('buyerInput').value = clean;
+  el('buyerSelect').value = clean;
   el('statusMsg').textContent = `Active user: ${clean}`;
   showToast('');
   refreshAll();
@@ -496,16 +496,15 @@ function init() {
     .toISOString()
     .slice(0, 16);
 
-  el('buyerInput').value = state.buyerId;
+  const buyers = ['buyer-01', 'buyer-02', 'buyer-03', 'buyer-04', 'buyer-05'];
+  if (!buyers.includes(state.buyerId)) {
+    state.buyerId = 'buyer-01';
+    localStorage.setItem('ticketid_buyer', state.buyerId);
+  }
+  el('buyerSelect').value = state.buyerId;
   el('statusMsg').textContent = `Active user: ${state.buyerId}`;
 
-  el('buyerInput').addEventListener('change', (e) => switchBuyer(e.target.value));
-  el('buyerInput').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      switchBuyer(e.target.value);
-    }
-  });
+  el('buyerSelect').addEventListener('change', (e) => switchBuyer(e.target.value));
 
   document.querySelectorAll('.xp-tab').forEach((tab) => {
     tab.addEventListener('click', () => switchTab(tab.dataset.tab));
