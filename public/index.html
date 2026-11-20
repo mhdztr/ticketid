@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TicketID BoxOffice - Live Quota Console</title>
+    <title>TicketID BoxOffice</title>
     <link rel="stylesheet" href="/xp.css" />
   </head>
   <body>
@@ -17,430 +17,209 @@
               <rect x="8" y="6" width="5" height="2" fill="#0050EE" />
               <rect x="8" y="9" width="3" height="1" fill="#57574F" />
             </svg>
-            <span>TicketID BoxOffice - Live Quota Console</span>
+            <span>TicketID BoxOffice</span>
           </div>
           <div class="xp-title-buttons">
-            <button
-              id="minBtn"
-              type="button"
-              class="xp-caption-btn"
-              title="Minimize"
-              aria-label="Minimize window"
-            >
-              _
-            </button>
-            <button
-              id="maxBtn"
-              type="button"
-              class="xp-caption-btn"
-              title="Maximize"
-              aria-label="Maximize or restore window"
-            >
-              □
-            </button>
+            <button id="minBtn" type="button" class="xp-caption-btn" aria-label="Minimize">_</button>
+            <button id="maxBtn" type="button" class="xp-caption-btn" aria-label="Maximize">□</button>
           </div>
         </header>
 
-        <div class="xp-toolbar">
-          <div class="xp-toolbar-group">
-            <label for="buyerInput" class="xp-label">Active Buyer:</label>
-            <input
-              id="buyerInput"
-              type="text"
-              class="xp-input"
-              value="buyer-01"
-              maxlength="100"
-              style="width: 120px"
-            />
-            <select id="buyerPreset" class="xp-select" aria-label="Quick buyer preset">
-              <option value="buyer-01">buyer-01</option>
-              <option value="buyer-02">buyer-02</option>
-              <option value="buyer-03">buyer-03</option>
-            </select>
-            <button id="switchBuyerBtn" type="button" class="xp-btn">Switch</button>
-            <span class="xp-sep" aria-hidden="true"></span>
-            <button id="refreshBtn" type="button" class="xp-btn">Refresh</button>
+        <div class="xp-header">
+          <div class="xp-tabs" role="tablist" aria-label="BoxOffice Views">
+            <button type="button" class="xp-tab active" role="tab" aria-selected="true" data-tab="events" id="tabEventsBtn">
+              Events
+            </button>
+            <button type="button" class="xp-tab" role="tab" aria-selected="false" data-tab="orders" id="tabOrdersBtn">
+              Orders (0)
+            </button>
+            <button type="button" class="xp-tab" role="tab" aria-selected="false" data-tab="tickets" id="tabTicketsBtn">
+              Tickets (0)
+            </button>
+            <button type="button" class="xp-tab" role="tab" aria-selected="false" data-tab="lab" id="tabLabBtn">
+              200x Test
+            </button>
           </div>
-          <div class="xp-toolbar-group">
-            <span id="healthBadge" class="xp-muted">Checking API...</span>
+
+          <div class="xp-header-right">
+            <label class="xp-user-wrap">
+              <span>User:</span>
+              <input id="buyerInput" list="buyerList" type="text" class="xp-input" value="buyer-01" maxlength="100" style="width: 112px" />
+              <datalist id="buyerList">
+                <option value="buyer-01"></option>
+                <option value="buyer-02"></option>
+                <option value="buyer-03"></option>
+              </datalist>
+            </label>
+            <button id="openNewEventBtn" type="button" class="xp-btn xp-btn-primary">+ New Event</button>
           </div>
         </div>
 
-        <div class="xp-workspace">
-          <div class="xp-col">
-            <fieldset class="xp-group">
-              <legend>Events &amp; Live Quota</legend>
-              <div class="xp-row-between">
-                <span id="eventCountLabel" class="xp-muted">0 events loaded</span>
-                <button id="seedEventBtn" type="button" class="xp-btn xp-btn-small">
-                  Seed Sample Event
-                </button>
-              </div>
-              <div class="xp-listview">
-                <table class="xp-table">
-                  <thead>
-                    <tr>
-                      <th>Title</th>
-                      <th>Date</th>
-                      <th class="num">REG</th>
-                      <th class="num">VIP</th>
-                    </tr>
-                  </thead>
-                  <tbody id="eventsTbody">
-                    <tr>
-                      <td colspan="4" class="xp-empty">Loading events...</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <div id="selectedEventBox" class="xp-quota-box">
-                <div class="xp-muted">Select an event or seed a sample event to view quotas.</div>
-              </div>
-            </fieldset>
-
-            <fieldset class="xp-group">
-              <legend>Reserve Tickets (15-Minute Hold)</legend>
-              <form id="bookForm">
-                <div class="xp-form-grid">
-                  <div class="xp-field xp-field-full">
-                    <span class="xp-label">Ticket Tier</span>
-                    <div id="tierRadios" class="xp-radio-group">
-                      <div class="xp-muted">No event selected</div>
-                    </div>
-                  </div>
-                  <div class="xp-field">
-                    <label for="bookQty" class="xp-label">Quantity (1-4)</label>
-                    <select id="bookQty" class="xp-select">
-                      <option value="1">1 ticket</option>
-                      <option value="2">2 tickets</option>
-                      <option value="3">3 tickets</option>
-                      <option value="4">4 tickets</option>
-                    </select>
-                  </div>
-                  <div class="xp-field">
-                    <span class="xp-label">Estimated Total</span>
-                    <div id="bookTotal" class="num" style="font-weight: 700; padding-top: 4px">
-                      Rp 0
-                    </div>
-                  </div>
-                  <div class="xp-field xp-field-full">
-                    <button
-                      id="reserveBtn"
-                      type="submit"
-                      class="xp-btn xp-btn-primary"
-                      disabled
-                    >
-                      Reserve Tickets
-                    </button>
-                  </div>
-                </div>
-              </form>
-              <div id="bookNotice" class="xp-notice" hidden></div>
-            </fieldset>
+        <div class="xp-canvas">
+          <div id="toast" class="xp-toast" hidden>
+            <span id="toastText"></span>
+            <button id="toastClose" type="button" class="xp-toast-close" aria-label="Dismiss">×</button>
           </div>
 
-          <div class="xp-col">
-            <div class="xp-tabs" role="tablist" aria-label="BoxOffice Views">
-              <button
-                type="button"
-                class="xp-tab active"
-                role="tab"
-                aria-selected="true"
-                data-tab="orders"
-                id="tabOrdersBtn"
-              >
-                Orders (0)
+          <div id="pane-events" class="xp-pane active">
+            <div id="eventsContainer" class="xp-event-list">
+              <div class="xp-empty">Loading events...</div>
+            </div>
+          </div>
+
+          <div id="pane-orders" class="xp-pane">
+            <div class="xp-table-wrap">
+              <table class="xp-table">
+                <thead>
+                  <tr>
+                    <th>Order</th>
+                    <th>Event &amp; Tier</th>
+                    <th class="num">Total</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="ordersTbody">
+                  <tr><td colspan="5" class="xp-empty">Loading orders...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div id="pane-tickets" class="xp-pane">
+            <div id="ticketsContainer" class="xp-tickets-grid">
+              <div class="xp-empty">Loading tickets...</div>
+            </div>
+          </div>
+
+          <div id="pane-lab" class="xp-pane">
+            <div class="xp-lab-bar">
+              <button id="runBurstBtn" type="button" class="xp-btn xp-btn-primary">
+                Run 200 Orders (Quota 100)
               </button>
-              <button
-                type="button"
-                class="xp-tab"
-                role="tab"
-                aria-selected="false"
-                data-tab="tickets"
-                id="tabTicketsBtn"
-              >
-                Issued Tickets (0)
-              </button>
-              <button
-                type="button"
-                class="xp-tab"
-                role="tab"
-                aria-selected="false"
-                data-tab="create"
-                id="tabCreateBtn"
-              >
-                New Event
-              </button>
-              <button
-                type="button"
-                class="xp-tab"
-                role="tab"
-                aria-selected="false"
-                data-tab="lab"
-                id="tabLabBtn"
-              >
-                Concurrency &amp; Webhooks
-              </button>
+              <button id="refreshLabBtn" type="button" class="xp-btn">Refresh</button>
             </div>
 
-            <div class="xp-tabpanel">
-              <div id="pane-orders" class="xp-pane active">
-                <div class="xp-row-between">
-                  <span class="xp-muted">
-                    Max 4 active or paid tickets per buyer per event. Unpaid holds release after 15 minutes.
-                  </span>
-                </div>
-                <div class="xp-listview xp-listview-tall">
-                  <table class="xp-table">
-                    <thead>
-                      <tr>
-                        <th>Order</th>
-                        <th>Event</th>
-                        <th>Tier</th>
-                        <th class="num">Qty</th>
-                        <th class="num">Total</th>
-                        <th>Status</th>
-                        <th class="num">Hold Left</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody id="ordersTbody">
-                      <tr>
-                        <td colspan="8" class="xp-empty">Loading orders...</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-                <div id="orderNotice" class="xp-notice" hidden></div>
+            <div id="burstMetrics" class="xp-metrics">
+              <div class="xp-metric">
+                <div class="xp-metric-label">Sold (201)</div>
+                <div class="xp-metric-val num">-</div>
               </div>
-
-              <div id="pane-tickets" class="xp-pane">
-                <div class="xp-row-between">
-                  <span class="xp-muted">
-                    Unique ticket codes are issued once when payment webhook succeeds.
-                  </span>
-                </div>
-                <div id="ticketsList" class="xp-tickets-list">
-                  <div class="xp-empty">No tickets issued yet</div>
-                </div>
+              <div class="xp-metric">
+                <div class="xp-metric-label">Sold Out (409)</div>
+                <div class="xp-metric-val num">-</div>
               </div>
-
-              <div id="pane-create" class="xp-pane">
-                <form id="createEventForm">
-                  <fieldset class="xp-group">
-                    <legend>Event Details</legend>
-                    <div class="xp-form-grid">
-                      <div class="xp-field">
-                        <label for="evTitle" class="xp-label">Event Title</label>
-                        <input
-                          id="evTitle"
-                          type="text"
-                          class="xp-input"
-                          required
-                          minlength="2"
-                          value="Jakarta Jazz Evening"
-                        />
-                      </div>
-                      <div class="xp-field">
-                        <label for="evVenue" class="xp-label">Venue</label>
-                        <input
-                          id="evVenue"
-                          type="text"
-                          class="xp-input"
-                          required
-                          minlength="2"
-                          value="Balai Sarbini"
-                        />
-                      </div>
-                      <div class="xp-field">
-                        <label for="evDate" class="xp-label">Event Date &amp; Time</label>
-                        <input id="evDate" type="datetime-local" class="xp-input" required />
-                      </div>
-                      <div class="xp-field">
-                        <label for="evDesc" class="xp-label">Description</label>
-                        <input
-                          id="evDesc"
-                          type="text"
-                          class="xp-input"
-                          value="Small-hall seated concert"
-                        />
-                      </div>
-                    </div>
-                  </fieldset>
-
-                  <fieldset class="xp-group" style="margin-top: 8px">
-                    <legend>Ticket Quotas &amp; Pricing (IDR)</legend>
-                    <div class="xp-form-grid">
-                      <div class="xp-field">
-                        <label for="evRegPrice" class="xp-label">REGULER Price</label>
-                        <input
-                          id="evRegPrice"
-                          type="number"
-                          min="0"
-                          class="xp-input num"
-                          required
-                          value="150000"
-                        />
-                      </div>
-                      <div class="xp-field">
-                        <label for="evRegQuota" class="xp-label">REGULER Quota</label>
-                        <input
-                          id="evRegQuota"
-                          type="number"
-                          min="1"
-                          class="xp-input num"
-                          required
-                          value="80"
-                        />
-                      </div>
-                      <div class="xp-field">
-                        <label for="evVipPrice" class="xp-label">VIP Price</label>
-                        <input
-                          id="evVipPrice"
-                          type="number"
-                          min="0"
-                          class="xp-input num"
-                          required
-                          value="350000"
-                        />
-                      </div>
-                      <div class="xp-field">
-                        <label for="evVipQuota" class="xp-label">VIP Quota</label>
-                        <input
-                          id="evVipQuota"
-                          type="number"
-                          min="1"
-                          class="xp-input num"
-                          required
-                          value="20"
-                        />
-                      </div>
-                      <div class="xp-field xp-field-full">
-                        <button type="submit" class="xp-btn xp-btn-primary">
-                          Create Event
-                        </button>
-                      </div>
-                    </div>
-                  </fieldset>
-                </form>
-                <div id="createNotice" class="xp-notice" hidden></div>
+              <div class="xp-metric">
+                <div class="xp-metric-label">Quota Left</div>
+                <div class="xp-metric-val num">-</div>
               </div>
-
-              <div id="pane-lab" class="xp-pane">
-                <fieldset class="xp-group">
-                  <legend>200 Concurrent Orders Stress Test (Quota 100)</legend>
-                  <div class="xp-row-between">
-                    <span class="xp-muted">
-                      Fires 200 simultaneous reservations against 100 REGULER tickets in PostgreSQL.
-                    </span>
-                    <button id="runBurstBtn" type="button" class="xp-btn xp-btn-primary">
-                      Run 200 Concurrent Orders
-                    </button>
-                  </div>
-                  <div id="burstResult" class="xp-bench-grid">
-                    <div class="xp-metric-cell">
-                      <div class="xp-metric-label">Total Requests</div>
-                      <div class="xp-metric-value num">-</div>
-                    </div>
-                    <div class="xp-metric-cell">
-                      <div class="xp-metric-label">201 Created / 409 Sold Out</div>
-                      <div class="xp-metric-value num">-</div>
-                    </div>
-                    <div class="xp-metric-cell">
-                      <div class="xp-metric-label">Remaining Quota / Time</div>
-                      <div class="xp-metric-value num">-</div>
-                    </div>
-                  </div>
-                </fieldset>
-
-                <fieldset class="xp-group" style="margin-top: 8px">
-                  <legend>Webhook Audit Log (Latest 50)</legend>
-                  <div class="xp-row-between">
-                    <span class="xp-muted">
-                      Tracks idempotent replays and late-payment refund flags.
-                    </span>
-                    <button id="refreshLogsBtn" type="button" class="xp-btn xp-btn-small">
-                      Refresh Log
-                    </button>
-                  </div>
-                  <div class="xp-listview">
-                    <table class="xp-table">
-                      <thead>
-                        <tr>
-                          <th>Time</th>
-                          <th>Webhook ID</th>
-                          <th>Order ID</th>
-                          <th>Provider</th>
-                          <th>Resolution</th>
-                        </tr>
-                      </thead>
-                      <tbody id="webhooksTbody">
-                        <tr>
-                          <td colspan="5" class="xp-empty">No webhook events yet</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                </fieldset>
+              <div class="xp-metric">
+                <div class="xp-metric-label">Time</div>
+                <div class="xp-metric-val num">-</div>
               </div>
+            </div>
+
+            <h3 class="xp-section-title">Recent Webhooks</h3>
+            <div class="xp-table-wrap">
+              <table class="xp-table">
+                <thead>
+                  <tr>
+                    <th>Order</th>
+                    <th>Status</th>
+                    <th>Resolution</th>
+                    <th class="num">Time</th>
+                  </tr>
+                </thead>
+                <tbody id="webhooksTbody">
+                  <tr><td colspan="4" class="xp-empty">No webhook events yet</td></tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
 
         <footer class="xp-statusbar">
           <div id="statusMsg" class="xp-status-cell">Ready</div>
-          <div id="statusBuyer" class="xp-status-cell">Buyer: buyer-01</div>
-          <div id="statusCounts" class="xp-status-cell num">Events: 0 | Orders: 0</div>
           <div id="statusDb" class="xp-status-cell">DB: Checking</div>
         </footer>
       </section>
     </main>
 
-    <div id="startMenu" class="xp-start-menu" role="menu" aria-label="Start Menu">
-      <div class="xp-start-head">TicketID BoxOffice v1.0</div>
-      <div class="xp-start-list">
-        <button type="button" class="xp-start-item" data-start-tab="orders">
-          View Orders
-        </button>
-        <button type="button" class="xp-start-item" data-start-tab="tickets">
-          View Issued Tickets
-        </button>
-        <button type="button" class="xp-start-item" data-start-tab="create">
-          Create New Event
-        </button>
-        <button type="button" class="xp-start-item" data-start-tab="lab">
-          Concurrency &amp; Webhook Lab
-        </button>
-        <button type="button" class="xp-start-item" data-start-action="seed">
-          Seed Sample Event
-        </button>
-        <button type="button" class="xp-start-item" data-start-action="refresh">
-          Refresh All Data
-        </button>
+    <dialog id="bookDialog" class="xp-dialog" aria-labelledby="bookDialogTitle">
+      <div class="xp-titlebar">
+        <div id="bookDialogTitle" class="xp-title-left">Book Tickets</div>
+        <button id="closeBookDialogBtn" type="button" class="xp-caption-btn xp-caption-close" aria-label="Close">×</button>
       </div>
-    </div>
+      <form id="bookForm" class="xp-dialog-body">
+        <div>
+          <strong id="dlgEventTitle">Event</strong>
+          <div id="dlgTierMeta" class="xp-event-meta">REGULER · Rp 0 · 0 left</div>
+        </div>
+        <div>
+          <div style="margin-bottom: 6px">Quantity (max 4 per event)</div>
+          <div id="qtyButtons" class="xp-qty-row">
+            <button type="button" class="xp-qty-btn active" data-qty="1">1</button>
+            <button type="button" class="xp-qty-btn" data-qty="2">2</button>
+            <button type="button" class="xp-qty-btn" data-qty="3">3</button>
+            <button type="button" class="xp-qty-btn" data-qty="4">4</button>
+          </div>
+        </div>
+        <div class="xp-dialog-total">
+          <span>Total</span>
+          <strong id="dlgTotal" class="num">Rp 0</strong>
+        </div>
+        <div class="xp-dialog-foot">
+          <button id="cancelBookBtn" type="button" class="xp-btn">Cancel</button>
+          <button type="submit" class="xp-btn xp-btn-primary">Book Now</button>
+        </div>
+      </form>
+    </dialog>
 
-    <nav class="xp-taskbar" aria-label="Desktop Taskbar">
-      <div class="xp-taskbar-left">
-        <button
-          id="startBtn"
-          type="button"
-          class="xp-start-btn"
-          aria-expanded="false"
-          aria-controls="startMenu"
-        >
-          <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
-            <rect x="1" y="1" width="5" height="5" fill="#F25022" />
-            <rect x="8" y="1" width="5" height="5" fill="#7FBA00" />
-            <rect x="1" y="8" width="5" height="5" fill="#00A4EF" />
-            <rect x="8" y="8" width="5" height="5" fill="#FFB900" />
-          </svg>
-          <span>start</span>
-        </button>
-        <button id="taskWindowBtn" type="button" class="xp-task-btn active">
-          TicketID BoxOffice
-        </button>
+    <dialog id="eventDialog" class="xp-dialog" aria-labelledby="eventDialogTitle">
+      <div class="xp-titlebar">
+        <div id="eventDialogTitle" class="xp-title-left">New Event</div>
+        <button id="closeEventDialogBtn" type="button" class="xp-caption-btn xp-caption-close" aria-label="Close">×</button>
       </div>
+      <form id="eventForm" class="xp-dialog-body">
+        <div class="xp-form-grid">
+          <label class="xp-field xp-field-full">
+            <span>Title</span>
+            <input id="evTitle" type="text" class="xp-input" required minlength="2" value="Jakarta Jazz Night" />
+          </label>
+          <label class="xp-field">
+            <span>Venue</span>
+            <input id="evVenue" type="text" class="xp-input" required minlength="2" value="Hall A Jakarta" />
+          </label>
+          <label class="xp-field">
+            <span>Date &amp; Time</span>
+            <input id="evDate" type="datetime-local" class="xp-input" required />
+          </label>
+          <label class="xp-field">
+            <span>REGULER Price (IDR)</span>
+            <input id="evRegPrice" type="number" min="0" class="xp-input num" required value="150000" />
+          </label>
+          <label class="xp-field">
+            <span>REGULER Quota</span>
+            <input id="evRegQuota" type="number" min="1" class="xp-input num" required value="50" />
+          </label>
+          <label class="xp-field">
+            <span>VIP Price (IDR)</span>
+            <input id="evVipPrice" type="number" min="0" class="xp-input num" required value="350000" />
+          </label>
+          <label class="xp-field">
+            <span>VIP Quota</span>
+            <input id="evVipQuota" type="number" min="1" class="xp-input num" required value="20" />
+          </label>
+        </div>
+        <div class="xp-dialog-foot">
+          <button id="cancelEventBtn" type="button" class="xp-btn">Cancel</button>
+          <button type="submit" class="xp-btn xp-btn-primary">Create</button>
+        </div>
+      </form>
+    </dialog>
+
+    <nav class="xp-taskbar" aria-label="Taskbar">
+      <button id="taskWindowBtn" type="button" class="xp-task-btn active">TicketID BoxOffice</button>
       <div id="trayClock" class="xp-tray num">--:--</div>
     </nav>
 

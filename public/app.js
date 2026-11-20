@@ -3,12 +3,11 @@
 const state = {
   buyerId: localStorage.getItem('ticketid_buyer') || 'buyer-01',
   events: [],
-  selectedEventId: null,
-  selectedTierId: null,
   orders: [],
   tickets: [],
   webhooks: [],
-  activeTab: 'orders',
+  bookTarget: null,
+  bookQty: 1,
   expiryRefreshSent: false,
 };
 
@@ -29,8 +28,7 @@ function formatIdr(amount) {
 
 function formatDate(iso) {
   if (!iso) return '-';
-  const d = new Date(iso);
-  return d.toLocaleString('id-ID', {
+  return new Date(iso).toLocaleString('id-ID', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -39,29 +37,34 @@ function formatDate(iso) {
   });
 }
 
+function formatTime(iso) {
+  if (!iso) return '-';
+  return new Date(iso).toLocaleTimeString('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+}
+
 function formatCountdown(expiresIso) {
-  const diffSec = Math.floor((new Date(expiresIso).getTime() - Date.now()) / 1000);
-  if (diffSec <= 0) return '00:00';
-  const mins = String(Math.floor(diffSec / 60)).padStart(2, '0');
-  const secs = String(diffSec % 60).padStart(2, '0');
-  return `${mins}:${secs}`;
+  const diff = Math.floor((new Date(expiresIso).getTime() - Date.now()) / 1000);
+  if (diff <= 0) return '00:00';
+  const m = String(Math.floor(diff / 60)).padStart(2, '0');
+  const s = String(diff % 60).padStart(2, '0');
+  return `${m}:${s}`;
 }
 
-function setStatus(text) {
-  el('statusMsg').textContent = text;
-}
-
-function showNotice(targetId, message, kind) {
-  const box = el(targetId);
-  if (!message) {
+function showToast(html, kind) {
+  const box = el('toast');
+  if (!html) {
     box.hidden = true;
-    box.textContent = '';
-    box.className = 'xp-notice';
+    el('toastText').innerHTML = '';
+    box.className = 'xp-toast';
     return;
   }
   box.hidden = false;
-  box.textContent = message;
-  box.className = `xp-notice ${kind || ''}`.trim();
+  box.className = `xp-toast ${kind || ''}`.trim();
+  el('toastText').innerHTML = html;
 }
 
 async function api(path, options = {}) {
@@ -86,188 +89,143 @@ async function api(path, options = {}) {
   return data;
 }
 
-function getSelectedEvent() {
-  return state.events.find((ev) => ev.id === state.selectedEventId) || null;
+function switchTab(tabName) {
+  document.querySelectorAll('.xp-tab').forEach((btn) => {
+    const active = btn.dataset.tab === tabName;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-selected', String(active));
+  });
+  document.querySelectorAll('.xp-pane').forEach((pane) => {
+    pane.classList.toggle('active', pane.id === `pane-${tabName}`);
+  });
 }
 
 function renderEvents() {
-  const tbody = el('eventsTbody');
-  el('eventCountLabel').textContent = `${state.events.length} events loaded`;
-
+  const container = el('eventsContainer');
   if (state.events.length === 0) {
-    tbody.innerHTML =
-      '<tr><td colspan="4" class="xp-empty">No events yet. Seed a sample event or create one</td></tr>';
-    renderSelectedEvent();
+    container.innerHTML = `
+      <div class="xp-empty">
+        <div>No events yet</div>
+        <div class="xp-empty-actions">
+          <button type="button" class="xp-btn xp-btn-primary" data-empty-action="new">+ New Event</button>
+          <button type="button" class="xp-btn" data-empty-action="seed">Add Sample Event</button>
+        </div>
+      </div>`;
     return;
   }
 
-  if (!getSelectedEvent()) {
-    state.selectedEventId = state.events[0].id;
-  }
-
-  tbody.innerHTML = state.events
+  container.innerHTML = state.events
     .map((ev) => {
-      const reg = ev.ticket_types.find((t) => t.category === 'REGULER');
-      const vip = ev.ticket_types.find((t) => t.category === 'VIP');
-      const selected = ev.id === state.selectedEventId ? 'selected' : '';
+      const tiers = ev.ticket_types
+        .map((tt) => {
+          const pct = tt.total_quota > 0 ? Math.round((tt.available_quota / tt.total_quota) * 100) : 0;
+          const soldOut = tt.available_quota <= 0;
+          return `
+            <div class="xp-tier-bar">
+              <div class="xp-tier-top">
+                <span class="xp-tier-name">${esc(tt.category)}</span>
+                <span class="xp-tier-price num">${esc(formatIdr(tt.price))}</span>
+              </div>
+              <div class="xp-tier-bottom">
+                <div class="xp-progress"><div class="xp-progress-fill" style="width: ${pct}%"></div></div>
+                <span class="xp-tier-count num">${tt.available_quota} / ${tt.total_quota}</span>
+                <button
+                  type="button"
+                  class="xp-btn xp-btn-sm xp-btn-primary"
+                  data-buy-event="${esc(ev.id)}"
+                  data-buy-tier="${esc(tt.id)}"
+                  ${soldOut ? 'disabled' : ''}
+                >${soldOut ? 'Sold out' : 'Buy'}</button>
+              </div>
+            </div>`;
+        })
+        .join('');
+
       return `
-        <tr data-event-id="${esc(ev.id)}" class="${selected}">
-          <td><strong>${esc(ev.title)}</strong><div class="xp-muted">${esc(ev.venue)}</div></td>
-          <td class="num">${esc(formatDate(ev.event_date))}</td>
-          <td class="num">${reg ? `${reg.available_quota}/${reg.total_quota}` : '-'}</td>
-          <td class="num">${vip ? `${vip.available_quota}/${vip.total_quota}` : '-'}</td>
-        </tr>`;
-    })
-    .join('');
-
-  renderSelectedEvent();
-}
-
-function renderSelectedEvent() {
-  const box = el('selectedEventBox');
-  const radios = el('tierRadios');
-  const reserveBtn = el('reserveBtn');
-  const ev = getSelectedEvent();
-
-  if (!ev) {
-    box.innerHTML = '<div class="xp-muted">Select an event to inspect remaining quotas</div>';
-    radios.innerHTML = '<div class="xp-muted">No event selected</div>';
-    reserveBtn.disabled = true;
-    updateBookingTotal();
-    return;
-  }
-
-  const tiersHtml = ev.ticket_types
-    .map((tt) => {
-      const pct = tt.total_quota > 0 ? Math.round((tt.available_quota / tt.total_quota) * 100) : 0;
-      return `
-        <div class="xp-tier-row">
-          <div class="xp-tier-head">
-            <span><strong>${esc(tt.category)}</strong> - ${esc(formatIdr(tt.price))}</span>
-            <span class="num">${tt.available_quota} / ${tt.total_quota} left</span>
+        <article class="xp-event-row">
+          <div class="xp-event-head">
+            <span class="xp-event-title">${esc(ev.title)}</span>
+            <span class="xp-event-meta">${esc(ev.venue)} · ${esc(formatDate(ev.event_date))}</span>
           </div>
-          <div class="xp-progress" aria-label="${esc(tt.category)} quota bar">
-            <div class="xp-progress-fill" style="width: ${pct}%"></div>
-          </div>
-        </div>`;
+          <div class="xp-tiers">${tiers}</div>
+        </article>`;
     })
     .join('');
-
-  box.innerHTML = `
-    <div class="xp-quota-title">${esc(ev.title)}</div>
-    <div class="xp-quota-meta">${esc(ev.venue)} | ${esc(formatDate(ev.event_date))}</div>
-    ${tiersHtml}`;
-
-  if (!ev.ticket_types.some((t) => t.id === state.selectedTierId)) {
-    state.selectedTierId = ev.ticket_types[0] ? ev.ticket_types[0].id : null;
-  }
-
-  radios.innerHTML = ev.ticket_types
-    .map((tt) => {
-      const checked = tt.id === state.selectedTierId ? 'checked' : '';
-      return `
-        <label class="xp-radio-opt">
-          <span class="xp-radio-opt-left">
-            <input type="radio" name="tierChoice" value="${esc(tt.id)}" ${checked} />
-            <strong>${esc(tt.category)}</strong>
-            <span class="xp-muted">(${tt.available_quota} left)</span>
-          </span>
-          <span class="num">${esc(formatIdr(tt.price))}</span>
-        </label>`;
-    })
-    .join('');
-
-  reserveBtn.disabled = !state.selectedTierId;
-  updateBookingTotal();
 }
 
-function updateBookingTotal() {
-  const ev = getSelectedEvent();
-  const tier = ev && ev.ticket_types.find((t) => t.id === state.selectedTierId);
-  const qty = Number(el('bookQty').value || 1);
-  el('bookTotal').textContent = tier ? formatIdr(tier.price * qty) : 'Rp 0';
-}
-
-function statusBadge(status) {
+function badgeClass(status) {
   const map = {
     PENDING: 'xp-badge-pending',
     PAID: 'xp-badge-paid',
     CANCELLED: 'xp-badge-cancelled',
     EXPIRED: 'xp-badge-expired',
   };
-  return `<span class="xp-badge ${map[status] || ''}">${esc(status)}</span>`;
+  return map[status] || '';
 }
 
 function renderOrders() {
-  const tbody = el('ordersTbody');
   el('tabOrdersBtn').textContent = `Orders (${state.orders.length})`;
-  el('statusCounts').textContent = `Events: ${state.events.length} | Orders: ${state.orders.length}`;
+  const tbody = el('ordersTbody');
 
   if (state.orders.length === 0) {
-    tbody.innerHTML =
-      '<tr><td colspan="8" class="xp-empty">No orders found for this buyer</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="xp-empty">No orders for this user</td></tr>';
     return;
   }
 
   tbody.innerHTML = state.orders
     .map((ord) => {
-      const countdown = ord.status === 'PENDING' ? formatCountdown(ord.expires_at) : '-';
+      const countdown =
+        ord.status === 'PENDING'
+          ? `<span class="xp-countdown num" data-expires="${esc(ord.expires_at)}">${esc(formatCountdown(ord.expires_at))}</span>`
+          : '';
+
       let actions = '';
       if (ord.status === 'PENDING') {
         actions = `
-          <button type="button" class="xp-btn xp-btn-small" data-order-action="pay" data-id="${esc(ord.id)}">Pay Webhook</button>
-          <button type="button" class="xp-btn xp-btn-small" data-order-action="cancel" data-id="${esc(ord.id)}">Cancel</button>
-          <button type="button" class="xp-btn xp-btn-small" data-order-action="late" data-id="${esc(ord.id)}">Late Webhook</button>`;
+          <button type="button" class="xp-btn xp-btn-sm xp-btn-primary" data-order-action="pay" data-id="${esc(ord.id)}">Pay</button>
+          <button type="button" class="xp-btn xp-btn-sm" data-order-action="cancel" data-id="${esc(ord.id)}">Cancel</button>
+          <button type="button" class="xp-btn xp-btn-sm" data-order-action="late" data-id="${esc(ord.id)}">Late</button>`;
       } else if (ord.status === 'PAID') {
         actions = `
-          <button type="button" class="xp-btn xp-btn-small" data-order-action="duplicate" data-id="${esc(ord.id)}">Duplicate Webhook</button>`;
+          <button type="button" class="xp-btn xp-btn-sm" data-order-action="duplicate" data-id="${esc(ord.id)}">Re-pay</button>`;
       } else {
         actions = `
-          <button type="button" class="xp-btn xp-btn-small" data-order-action="late" data-id="${esc(ord.id)}">Late Webhook</button>`;
+          <button type="button" class="xp-btn xp-btn-sm" data-order-action="late" data-id="${esc(ord.id)}">Late</button>`;
       }
 
       return `
         <tr>
           <td class="mono">${esc(ord.order_code)}</td>
-          <td>${esc(ord.event_title)}</td>
-          <td>${esc(ord.ticket_category)}</td>
-          <td class="num">${ord.quantity}</td>
+          <td><strong>${esc(ord.event_title)}</strong> · ${ord.quantity}x ${esc(ord.ticket_category)}</td>
           <td class="num">${esc(formatIdr(ord.total_price))}</td>
-          <td>${statusBadge(ord.status)}</td>
-          <td class="num countdown" data-expires="${ord.status === 'PENDING' ? esc(ord.expires_at) : ''}">${esc(countdown)}</td>
-          <td><div class="xp-actions-cell">${actions}</div></td>
+          <td><span class="xp-badge ${badgeClass(ord.status)}">${esc(ord.status)}</span>${countdown}</td>
+          <td><div class="xp-actions">${actions}</div></td>
         </tr>`;
     })
     .join('');
 }
 
 function renderTickets() {
-  const list = el('ticketsList');
-  el('tabTicketsBtn').textContent = `Issued Tickets (${state.tickets.length})`;
+  el('tabTicketsBtn').textContent = `Tickets (${state.tickets.length})`;
+  const container = el('ticketsContainer');
 
   if (state.tickets.length === 0) {
-    list.innerHTML =
-      '<div class="xp-empty">No tickets issued yet. Complete payment via webhook to issue ticket codes</div>';
+    container.innerHTML = '<div class="xp-empty" style="grid-column: 1 / -1">No issued tickets yet</div>';
     return;
   }
 
-  list.innerHTML = state.tickets
+  container.innerHTML = state.tickets
     .map(
       (t) => `
-      <div class="ticket-slip">
-        <div class="ticket-stub">
-          <div>
-            <span class="xp-badge xp-badge-paid">${esc(t.category)}</span>
-            <span class="xp-muted" style="margin-left: 4px">Seat #${t.seat_seq}</span>
-          </div>
-          <div class="ticket-code">${esc(t.ticket_code)}</div>
-          <div class="xp-muted mono">${esc(t.order_code)}</div>
+      <div class="ticket-card">
+        <div class="ticket-card-top">
+          <span class="ticket-code">${esc(t.ticket_code)}</span>
+          <span class="xp-badge xp-badge-paid">${esc(t.category)} · #${t.seat_seq}</span>
         </div>
-        <div class="ticket-body">
+        <div class="ticket-card-body">
           <strong>${esc(t.event_title)}</strong>
-          <div>${esc(t.venue)}</div>
-          <div class="xp-muted">Event: ${esc(formatDate(t.event_date))}</div>
-          <div class="xp-muted">Issued: ${esc(formatDate(t.issued_at))}</div>
+          <span>${esc(t.venue)} · ${esc(formatDate(t.event_date))}</span>
+          <span class="mono" style="color: #5a5a52">${esc(t.order_code)}</span>
         </div>
       </div>`
     )
@@ -276,20 +234,21 @@ function renderTickets() {
 
 function renderWebhooks() {
   const tbody = el('webhooksTbody');
-  if (state.webhooks.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" class="xp-empty">No webhook deliveries logged</td></tr>';
+  const recent = state.webhooks.slice(0, 20);
+  if (recent.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" class="xp-empty">No webhook events yet</td></tr>';
     return;
   }
 
-  tbody.innerHTML = state.webhooks
+  const codeById = new Map(state.orders.map((o) => [o.id, o.order_code]));
+  tbody.innerHTML = recent
     .map(
       (wh) => `
       <tr>
-        <td class="num">${esc(formatDate(wh.processed_at))}</td>
-        <td class="mono">${esc(wh.webhook_id)}</td>
-        <td class="mono">${esc(wh.order_id.slice(0, 8))}...</td>
+        <td class="mono">${esc(codeById.get(wh.order_id) || wh.order_id.slice(0, 8))}</td>
         <td>${esc(wh.provider_status)}</td>
         <td class="mono">${esc(wh.resolution)}</td>
+        <td class="num">${esc(formatTime(wh.processed_at))}</td>
       </tr>`
     )
     .join('');
@@ -305,61 +264,62 @@ async function refreshAll() {
       api('/api/payments/webhooks'),
     ]);
 
-    el('healthBadge').textContent = `API ${health.status.toUpperCase()} | DB ${health.db.toUpperCase()}`;
-    el('statusDb').textContent = `DB: ${health.db === 'up' ? 'PostgreSQL OK' : 'Down'}`;
     state.events = evData.events || [];
     state.orders = ordData.orders || [];
     state.tickets = tktData.tickets || [];
     state.webhooks = whData.webhooks || [];
     state.expiryRefreshSent = false;
 
+    el('statusDb').textContent = health.db === 'up' ? 'DB: OK' : 'DB: Down';
     renderEvents();
     renderOrders();
     renderTickets();
     renderWebhooks();
   } catch (err) {
-    el('healthBadge').textContent = 'API Error';
     el('statusDb').textContent = 'DB: Error';
-    setStatus(err.message);
+    el('statusMsg').textContent = err.message;
   }
 }
 
-function switchTab(tabName) {
-  state.activeTab = tabName;
-  document.querySelectorAll('.xp-tab').forEach((btn) => {
-    const active = btn.dataset.tab === tabName;
-    btn.classList.toggle('active', active);
-    btn.setAttribute('aria-selected', String(active));
-  });
-  document.querySelectorAll('.xp-pane').forEach((pane) => {
-    pane.classList.toggle('active', pane.id === `pane-${tabName}`);
-  });
-}
-
-function setBuyer(newBuyer) {
-  const clean = newBuyer.trim();
-  if (!clean) return;
+function switchBuyer(nextBuyer) {
+  const clean = nextBuyer.trim();
+  if (!clean || clean === state.buyerId) return;
   state.buyerId = clean;
   localStorage.setItem('ticketid_buyer', clean);
   el('buyerInput').value = clean;
-  if (['buyer-01', 'buyer-02', 'buyer-03'].includes(clean)) {
-    el('buyerPreset').value = clean;
-  }
-  el('statusBuyer').textContent = `Buyer: ${clean}`;
-  showNotice('bookNotice', '');
-  showNotice('orderNotice', '');
-  setStatus(`Switched active buyer to ${clean}`);
+  el('statusMsg').textContent = `Active user: ${clean}`;
+  showToast('');
   refreshAll();
 }
 
+function openBookDialog(eventId, tierId) {
+  const ev = state.events.find((e) => e.id === eventId);
+  const tt = ev && ev.ticket_types.find((t) => t.id === tierId);
+  if (!ev || !tt) return;
+
+  state.bookTarget = { event: ev, tier: tt };
+  state.bookQty = 1;
+  el('dlgEventTitle').textContent = ev.title;
+  el('dlgTierMeta').textContent = `${tt.category} · ${formatIdr(tt.price)} · ${tt.available_quota} left`;
+  updateQtyUi();
+  el('bookDialog').showModal();
+}
+
+function updateQtyUi() {
+  document.querySelectorAll('#qtyButtons .xp-qty-btn').forEach((btn) => {
+    btn.classList.toggle('active', Number(btn.dataset.qty) === state.bookQty);
+  });
+  const price = state.bookTarget ? state.bookTarget.tier.price : 0;
+  el('dlgTotal').textContent = formatIdr(price * state.bookQty);
+}
+
 async function seedSampleEvent() {
-  setStatus('Seeding sample event...');
+  el('statusMsg').textContent = 'Creating sample event...';
   try {
-    const event = await api('/api/events', {
+    const created = await api('/api/events', {
       method: 'POST',
       body: JSON.stringify({
         title: `Indie Night #${Math.floor(100 + Math.random() * 900)}`,
-        description: 'Sample event created from BoxOffice console',
         venue: 'Hall A Jakarta',
         event_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         ticket_types: [
@@ -368,96 +328,43 @@ async function seedSampleEvent() {
         ],
       }),
     });
-    state.selectedEventId = event.id;
-    state.selectedTierId = null;
+    showToast(`Created ${esc(created.title)}`, 'ok');
+    el('statusMsg').textContent = `Created ${created.title}`;
     await refreshAll();
-    setStatus(`Created sample event ${event.title}`);
   } catch (err) {
-    setStatus(err.message);
+    showToast(esc(err.message), 'error');
   }
 }
 
-async function handleReserve(e) {
+async function handleBookSubmit(e) {
   e.preventDefault();
-  if (!state.selectedTierId) return;
-  const qty = Number(el('bookQty').value || 1);
-  showNotice('bookNotice', '');
-  setStatus('Reserving tickets...');
+  if (!state.bookTarget) return;
+  const target = state.bookTarget;
 
   try {
     const order = await api('/api/orders', {
       method: 'POST',
-      body: JSON.stringify({ ticket_type_id: state.selectedTierId, quantity: qty }),
+      body: JSON.stringify({
+        ticket_type_id: target.tier.id,
+        quantity: state.bookQty,
+      }),
     });
-    showNotice(
-      'bookNotice',
-      `Reserved ${order.order_code} (${order.quantity}x ${order.ticket_category}). Hold expires in 15 minutes`,
+    el('bookDialog').close();
+    showToast(
+      `Booked <strong>${esc(order.order_code)}</strong> (${order.quantity}x ${esc(order.ticket_category)}) <button type="button" class="xp-btn-link" data-jump-tab="orders">Go to Orders -&gt;</button>`,
       'ok'
     );
-    setStatus(`Order ${order.order_code} created (PENDING)`);
+    el('statusMsg').textContent = `Reserved ${order.order_code}`;
     await refreshAll();
   } catch (err) {
-    showNotice('bookNotice', `${err.code || 'ERROR'}: ${err.message}`, 'error');
-    setStatus(`Reservation failed: ${err.message}`);
-  }
-}
-
-async function handleOrderAction(action, orderId) {
-  showNotice('orderNotice', '');
-  try {
-    if (action === 'cancel') {
-      const res = await api(`/api/orders/${orderId}/cancel`, { method: 'POST' });
-      showNotice(
-        'orderNotice',
-        `Order ${res.order_code} cancelled and quota returned`,
-        'ok'
-      );
-      setStatus(`Cancelled order ${res.order_code}`);
-    } else if (action === 'pay') {
-      const res = await api('/api/payments/simulate', {
-        method: 'POST',
-        body: JSON.stringify({ order_id: orderId, mode: 'normal' }),
-      });
-      showNotice(
-        'orderNotice',
-        `Webhook ${res.webhook_id} resolved: ${res.resolution} (${res.tickets.length} ticket issued)`,
-        'ok'
-      );
-      setStatus(`Payment settled (${res.resolution})`);
-    } else if (action === 'duplicate') {
-      const res = await api('/api/payments/simulate', {
-        method: 'POST',
-        body: JSON.stringify({ order_id: orderId, mode: 'duplicate' }),
-      });
-      showNotice(
-        'orderNotice',
-        `Duplicate replay: 1st=${res.first.resolution} (replay=${res.first.idempotent_replay}), 2nd=${res.second.resolution} (replay=${res.second.idempotent_replay}), tickets=${res.second.tickets.length}`,
-        'ok'
-      );
-      setStatus('Verified idempotent duplicate webhook');
-    } else if (action === 'late') {
-      const res = await api('/api/payments/simulate', {
-        method: 'POST',
-        body: JSON.stringify({ order_id: orderId, mode: 'late' }),
-      });
-      showNotice(
-        'orderNotice',
-        `Late webhook ${res.webhook_id}: order=${res.order_status}, resolution=${res.resolution}, refund_required=${res.refund_required}`,
-        'error'
-      );
-      setStatus(`Late payment logged (${res.resolution})`);
-    }
-    await refreshAll();
-  } catch (err) {
-    showNotice('orderNotice', `${err.code || 'ERROR'}: ${err.message}`, 'error');
-    setStatus(err.message);
-    await refreshAll();
+    el('bookDialog').close();
+    showToast(esc(err.message), 'error');
+    el('statusMsg').textContent = err.message;
   }
 }
 
 async function handleCreateEvent(e) {
   e.preventDefault();
-  showNotice('createNotice', '');
   const rawDate = el('evDate').value;
   if (!rawDate) return;
 
@@ -466,7 +373,6 @@ async function handleCreateEvent(e) {
       method: 'POST',
       body: JSON.stringify({
         title: el('evTitle').value.trim(),
-        description: el('evDesc').value.trim(),
         venue: el('evVenue').value.trim(),
         event_date: new Date(rawDate).toISOString(),
         ticket_types: [
@@ -483,102 +389,163 @@ async function handleCreateEvent(e) {
         ],
       }),
     });
-    state.selectedEventId = created.id;
-    state.selectedTierId = null;
-    showNotice('createNotice', `Created event "${created.title}"`, 'ok');
-    setStatus(`Created event ${created.title}`);
+    el('eventDialog').close();
+    switchTab('events');
+    showToast(`Created <strong>${esc(created.title)}</strong>`, 'ok');
+    el('statusMsg').textContent = `Created ${created.title}`;
     await refreshAll();
   } catch (err) {
-    showNotice('createNotice', `${err.code || 'ERROR'}: ${err.message}`, 'error');
-    setStatus(err.message);
+    showToast(esc(err.message), 'error');
+  }
+}
+
+async function handleOrderAction(action, orderId) {
+  try {
+    if (action === 'cancel') {
+      const res = await api(`/api/orders/${orderId}/cancel`, { method: 'POST' });
+      showToast(`Cancelled <strong>${esc(res.order_code)}</strong> · quota restored`, 'ok');
+      el('statusMsg').textContent = `Cancelled ${res.order_code}`;
+    } else if (action === 'pay') {
+      const res = await api('/api/payments/simulate', {
+        method: 'POST',
+        body: JSON.stringify({ order_id: orderId, mode: 'normal' }),
+      });
+      showToast(
+        `Paid · issued ${res.tickets.length} ticket(s) <button type="button" class="xp-btn-link" data-jump-tab="tickets">View Tickets -&gt;</button>`,
+        'ok'
+      );
+      el('statusMsg').textContent = `Paid (${res.resolution})`;
+    } else if (action === 'duplicate') {
+      const res = await api('/api/payments/simulate', {
+        method: 'POST',
+        body: JSON.stringify({ order_id: orderId, mode: 'duplicate' }),
+      });
+      showToast(
+        `Duplicate replay ignored (${esc(res.second.resolution)}) · still ${res.second.tickets.length} ticket(s)`,
+        'ok'
+      );
+      el('statusMsg').textContent = 'Idempotent replay verified';
+    } else if (action === 'late') {
+      const res = await api('/api/payments/simulate', {
+        method: 'POST',
+        body: JSON.stringify({ order_id: orderId, mode: 'late' }),
+      });
+      showToast(
+        `Late webhook rejected tickets · <strong>${esc(res.resolution)}</strong>`,
+        'error'
+      );
+      el('statusMsg').textContent = res.resolution;
+    }
+    await refreshAll();
+  } catch (err) {
+    showToast(esc(err.message), 'error');
+    await refreshAll();
   }
 }
 
 async function handleBurstDemo() {
   const btn = el('runBurstBtn');
   btn.disabled = true;
-  setStatus('Running 200 concurrent reservations against 100 quota...');
+  el('statusMsg').textContent = 'Running 200 concurrent orders...';
+
   try {
     const res = await api('/api/payments/concurrency-demo', { method: 'POST' });
-    el('burstResult').innerHTML = `
-      <div class="xp-metric-cell">
-        <div class="xp-metric-label">Total Requests / Quota</div>
-        <div class="xp-metric-value num">${res.total_requests} / ${res.quota}</div>
+    el('burstMetrics').innerHTML = `
+      <div class="xp-metric">
+        <div class="xp-metric-label">Sold (201)</div>
+        <div class="xp-metric-val num">${res.created}</div>
       </div>
-      <div class="xp-metric-cell">
-        <div class="xp-metric-label">201 Created / 409 Sold Out / Other</div>
-        <div class="xp-metric-value num">${res.created} / ${res.conflicts} / ${res.other}</div>
+      <div class="xp-metric">
+        <div class="xp-metric-label">Sold Out (409)</div>
+        <div class="xp-metric-val num">${res.conflicts}</div>
       </div>
-      <div class="xp-metric-cell">
-        <div class="xp-metric-label">Remaining Quota / Elapsed</div>
-        <div class="xp-metric-value num">${res.remaining_quota} / ${res.elapsed_ms} ms</div>
+      <div class="xp-metric">
+        <div class="xp-metric-label">Quota Left</div>
+        <div class="xp-metric-val num">${res.remaining_quota}</div>
+      </div>
+      <div class="xp-metric">
+        <div class="xp-metric-label">Time</div>
+        <div class="xp-metric-val num">${res.elapsed_ms} ms</div>
       </div>`;
-    state.selectedEventId = res.event_id;
-    await refreshAll();
-    setStatus(
-      `Burst complete: ${res.created} reserved, ${res.conflicts} rejected, 0 oversold (${res.elapsed_ms} ms)`
+    showToast(
+      `200 orders tested: ${res.created} sold, ${res.conflicts} rejected, 0 oversold`,
+      'ok'
     );
+    el('statusMsg').textContent = `200x test finished in ${res.elapsed_ms} ms`;
+    await refreshAll();
   } catch (err) {
-    setStatus(`Burst failed: ${err.message}`);
+    showToast(esc(err.message), 'error');
   } finally {
     btn.disabled = false;
   }
 }
 
 function updateTrayClock() {
-  const now = new Date();
-  el('trayClock').textContent = now.toLocaleTimeString('en-GB', {
+  el('trayClock').textContent = new Date().toLocaleTimeString('en-GB', {
     hour: '2-digit',
     minute: '2-digit',
   });
 }
 
 function init() {
-  const defaultEventDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-  defaultEventDate.setMinutes(0, 0, 0);
-  const localIso = new Date(
-    defaultEventDate.getTime() - defaultEventDate.getTimezoneOffset() * 60000
+  const defaultDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  defaultDate.setMinutes(0, 0, 0);
+  el('evDate').value = new Date(
+    defaultDate.getTime() - defaultDate.getTimezoneOffset() * 60000
   )
     .toISOString()
     .slice(0, 16);
-  el('evDate').value = localIso;
 
   el('buyerInput').value = state.buyerId;
-  if (['buyer-01', 'buyer-02', 'buyer-03'].includes(state.buyerId)) {
-    el('buyerPreset').value = state.buyerId;
-  }
-  el('statusBuyer').textContent = `Buyer: ${state.buyerId}`;
+  el('statusMsg').textContent = `Active user: ${state.buyerId}`;
 
-  el('buyerPreset').addEventListener('change', (e) => setBuyer(e.target.value));
-  el('switchBuyerBtn').addEventListener('click', () => setBuyer(el('buyerInput').value));
+  el('buyerInput').addEventListener('change', (e) => switchBuyer(e.target.value));
   el('buyerInput').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      setBuyer(el('buyerInput').value);
+      switchBuyer(e.target.value);
     }
   });
-  el('refreshBtn').addEventListener('click', refreshAll);
-  el('refreshLogsBtn').addEventListener('click', refreshAll);
-  el('seedEventBtn').addEventListener('click', seedSampleEvent);
-  el('bookForm').addEventListener('submit', handleReserve);
-  el('bookQty').addEventListener('change', updateBookingTotal);
-  el('createEventForm').addEventListener('submit', handleCreateEvent);
-  el('runBurstBtn').addEventListener('click', handleBurstDemo);
 
-  el('eventsTbody').addEventListener('click', (e) => {
-    const row = e.target.closest('tr[data-event-id]');
-    if (!row) return;
-    state.selectedEventId = row.dataset.eventId;
-    state.selectedTierId = null;
-    renderEvents();
+  document.querySelectorAll('.xp-tab').forEach((tab) => {
+    tab.addEventListener('click', () => switchTab(tab.dataset.tab));
   });
 
-  el('tierRadios').addEventListener('change', (e) => {
-    if (e.target.name === 'tierChoice') {
-      state.selectedTierId = e.target.value;
-      updateBookingTotal();
+  el('toast').addEventListener('click', (e) => {
+    const jump = e.target.closest('[data-jump-tab]');
+    if (jump) switchTab(jump.dataset.jumpTab);
+  });
+  el('toastClose').addEventListener('click', () => showToast(''));
+
+  el('eventsContainer').addEventListener('click', (e) => {
+    const buyBtn = e.target.closest('button[data-buy-tier]');
+    if (buyBtn) {
+      openBookDialog(buyBtn.dataset.buyEvent, buyBtn.dataset.buyTier);
+      return;
+    }
+    const emptyBtn = e.target.closest('button[data-empty-action]');
+    if (emptyBtn && emptyBtn.dataset.emptyAction === 'new') {
+      el('eventDialog').showModal();
+    } else if (emptyBtn && emptyBtn.dataset.emptyAction === 'seed') {
+      seedSampleEvent();
     }
   });
+
+  el('qtyButtons').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-qty]');
+    if (!btn) return;
+    state.bookQty = Number(btn.dataset.qty);
+    updateQtyUi();
+  });
+
+  el('bookForm').addEventListener('submit', handleBookSubmit);
+  el('closeBookDialogBtn').addEventListener('click', () => el('bookDialog').close());
+  el('cancelBookBtn').addEventListener('click', () => el('bookDialog').close());
+
+  el('openNewEventBtn').addEventListener('click', () => el('eventDialog').showModal());
+  el('eventForm').addEventListener('submit', handleCreateEvent);
+  el('closeEventDialogBtn').addEventListener('click', () => el('eventDialog').close());
+  el('cancelEventBtn').addEventListener('click', () => el('eventDialog').close());
 
   el('ordersTbody').addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-order-action]');
@@ -586,9 +553,8 @@ function init() {
     handleOrderAction(btn.dataset.orderAction, btn.dataset.id);
   });
 
-  document.querySelectorAll('.xp-tab').forEach((tab) => {
-    tab.addEventListener('click', () => switchTab(tab.dataset.tab));
-  });
+  el('runBurstBtn').addEventListener('click', handleBurstDemo);
+  el('refreshLabBtn').addEventListener('click', refreshAll);
 
   el('minBtn').addEventListener('click', () => {
     el('appWindow').classList.add('minimized');
@@ -608,47 +574,15 @@ function init() {
     el('taskWindowBtn').classList.toggle('active', !minimized);
   });
 
-  const startBtn = el('startBtn');
-  const startMenu = el('startMenu');
-  startBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const open = startMenu.classList.toggle('open');
-    startBtn.setAttribute('aria-expanded', String(open));
-  });
-
-  startMenu.addEventListener('click', (e) => {
-    const item = e.target.closest('button');
-    if (!item) return;
-    startMenu.classList.remove('open');
-    startBtn.setAttribute('aria-expanded', 'false');
-    el('appWindow').classList.remove('minimized');
-    el('taskWindowBtn').classList.add('active');
-    if (item.dataset.startTab) {
-      switchTab(item.dataset.startTab);
-    } else if (item.dataset.startAction === 'seed') {
-      seedSampleEvent();
-    } else if (item.dataset.startAction === 'refresh') {
-      refreshAll();
-    }
-  });
-
-  document.addEventListener('click', () => {
-    startMenu.classList.remove('open');
-    startBtn.setAttribute('aria-expanded', 'false');
-  });
-
   updateTrayClock();
   setInterval(updateTrayClock, 15000);
 
   setInterval(() => {
     let anyExpired = false;
-    document.querySelectorAll('.countdown[data-expires]').forEach((cell) => {
-      if (!cell.dataset.expires) return;
+    document.querySelectorAll('.xp-countdown[data-expires]').forEach((cell) => {
       const text = formatCountdown(cell.dataset.expires);
       cell.textContent = text;
-      if (text === '00:00') {
-        anyExpired = true;
-      }
+      if (text === '00:00') anyExpired = true;
     });
     if (anyExpired && !state.expiryRefreshSent) {
       state.expiryRefreshSent = true;
