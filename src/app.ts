@@ -1,6 +1,7 @@
 import express, { type Request } from 'express';
 import { checkDb } from './db.js';
 import { errorHandler } from './errors.js';
+import { eventsRouter } from './routes/events.js';
 
 export type RawBodyRequest = Request & { rawBody?: Buffer };
 
@@ -24,6 +25,8 @@ export function createApp() {
     }
     res.json({ status: 'ok', db: 'up' });
   });
+
+  app.use('/api/events', eventsRouter);
 
   app.use((_req, res) => {
     res.status(404).json({
