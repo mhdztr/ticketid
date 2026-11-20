@@ -121,7 +121,102 @@ export async function releaseOrderQuota(
   );
 }
 
-export async function createOrder(input: CreateOrderInput): Promise<OrderSummary> {
+export async function expirePendingOrders(batchSize = 50): Promise<number> {
+  const now = clock.now();
+  let totalSwept = 0;
+
+  for (let batch = 0; batch < 20; batch++) {
+    const swept = await withTx(async (client) => {
+      const dueRes = await client.query<{ id: string }>(
+        `SELECT id
+         FROM orders
+         WHERE status = 'PENDING' AND expires_at <= $1
+         ORDER BY expires_at ASC
+         LIMIT $2
+         FOR UPDATE SKIP LOCKED`,
+        [now, batchSize]
+      );
+
+      if (dueRes.rows.length === 0) {
+        return 0;
+      }
+
+      const dueIds = dueRes.rows.map((r) => r.id);
+      const updatedRes = await client.query<{
+        event_id: string;
+        ticket_type_id: string;
+        buyer_id: string;
+        quantity: number;
+      }>(
+        `UPDATE orders
+         SET status = 'EXPIRED', expired_at = $2
+         WHERE id = ANY($1::uuid[]) AND status = 'PENDING'
+         RETURNING event_id, ticket_type_id, buyer_id, quantity`,
+        [dueIds, now]
+      );
+
+      if (updatedRes.rows.length === 0) {
+        return 0;
+      }
+
+      const buyerTotals = new Map<
+        string,
+        { eventId: string; buyerId: string; quantity: number }
+      >();
+      const typeTotals = new Map<string, number>();
+
+      for (const row of updatedRes.rows) {
+        const buyerKey = `${row.event_id}:${row.buyer_id}`;
+        const existingBuyer = buyerTotals.get(buyerKey);
+        if (existingBuyer) {
+          existingBuyer.quantity += row.quantity;
+        } else {
+          buyerTotals.set(buyerKey, {
+            eventId: row.event_id,
+            buyerId: row.buyer_id,
+            quantity: row.quantity,
+          });
+        }
+
+        typeTotals.set(
+          row.ticket_type_id,
+          (typeTotals.get(row.ticket_type_id) ?? 0) + row.quantity
+        );
+      }
+
+      // Update aggregated quotas in sorted key order to preserve the lock DAG across concurrent sweepers
+      for (const key of [...buyerTotals.keys()].sort()) {
+        const item = buyerTotals.get(key)!;
+        await client.query(
+          `UPDATE buyer_event_quotas
+           SET active_tickets = active_tickets - $3
+           WHERE event_id = $1 AND buyer_id = $2`,
+          [item.eventId, item.buyerId, item.quantity]
+        );
+      }
+
+      for (const ticketTypeId of [...typeTotals.keys()].sort()) {
+        await client.query(
+          `UPDATE ticket_types
+           SET available_quota = available_quota + $2
+           WHERE id = $1`,
+          [ticketTypeId, typeTotals.get(ticketTypeId)!]
+        );
+      }
+
+      return updatedRes.rows.length;
+    });
+
+    totalSwept += swept;
+    if (swept < batchSize) {
+      break;
+    }
+  }
+
+  return totalSwept;
+}
+
+async function tryCreateOrder(input: CreateOrderInput): Promise<OrderSummary> {
   return withTx(async (client) => {
     const ttRes = await client.query<{
       id: string;
@@ -225,6 +320,23 @@ export async function createOrder(input: CreateOrderInput): Promise<OrderSummary
   });
 }
 
+export async function createOrder(input: CreateOrderInput): Promise<OrderSummary> {
+  try {
+    return await tryCreateOrder(input);
+  } catch (err) {
+    if (
+      err instanceof AppError &&
+      (err.code === 'INSUFFICIENT_QUOTA' || err.code === 'BUYER_LIMIT_EXCEEDED')
+    ) {
+      const swept = await expirePendingOrders();
+      if (swept > 0) {
+        return tryCreateOrder(input);
+      }
+    }
+    throw err;
+  }
+}
+
 export async function cancelOrder(
   buyerId: string,
   orderId: string
@@ -321,6 +433,7 @@ export async function cancelOrder(
 }
 
 export async function listOrdersByBuyer(buyerId: string): Promise<OrderSummary[]> {
+  await expirePendingOrders();
   const ordersRes = await pool.query<OrderJoinedRow>(
     `SELECT o.id, o.order_code, o.event_id, e.title AS event_title,
             o.ticket_type_id, tt.category AS ticket_category, o.buyer_id,
@@ -361,6 +474,7 @@ export async function getOrderById(
   buyerId: string,
   orderId: string
 ): Promise<OrderSummary> {
+  await expirePendingOrders();
   const orderRes = await pool.query<OrderJoinedRow>(
     `SELECT o.id, o.order_code, o.event_id, e.title AS event_title,
             o.ticket_type_id, tt.category AS ticket_category, o.buyer_id,

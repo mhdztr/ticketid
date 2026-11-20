@@ -1,10 +1,12 @@
 import { createApp } from './app.js';
 import { config } from './config.js';
 import { initSchema, pool } from './db.js';
+import { startExpiryWorker } from './workers/expiryWorker.js';
 
 async function main(): Promise<void> {
   await initSchema();
 
+  const expiryWorker = startExpiryWorker();
   const app = createApp();
   const server = app.listen(config.port, () => {
     console.log(`TicketID server listening on port ${config.port}`);
@@ -12,6 +14,7 @@ async function main(): Promise<void> {
 
   const shutdown = (signal: string) => {
     console.log(`Received ${signal}, shutting down...`);
+    expiryWorker.stop();
     server.close(async () => {
       await pool.end();
       process.exit(0);

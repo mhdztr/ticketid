@@ -1,5 +1,6 @@
 import { pool, withTx } from '../db.js';
 import { AppError } from '../errors.js';
+import { expirePendingOrders } from './orderService.js';
 
 export type TicketCategory = 'REGULER' | 'VIP';
 
@@ -119,6 +120,7 @@ export async function createEvent(input: CreateEventInput): Promise<EventWithTic
 }
 
 export async function listEvents(): Promise<EventWithTickets[]> {
+  await expirePendingOrders();
   const eventsRes = await pool.query<EventRow>(
     `SELECT id, title, description, venue, event_date, max_tickets_per_buyer, created_at
      FROM events
@@ -149,6 +151,7 @@ export async function listEvents(): Promise<EventWithTickets[]> {
 }
 
 export async function getEventById(eventId: string): Promise<EventWithTickets> {
+  await expirePendingOrders();
   const eventRes = await pool.query<EventRow>(
     `SELECT id, title, description, venue, event_date, max_tickets_per_buyer, created_at
      FROM events
