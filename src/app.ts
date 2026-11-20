@@ -3,6 +3,8 @@ import { checkDb } from './db.js';
 import { errorHandler } from './errors.js';
 import { eventsRouter } from './routes/events.js';
 import { ordersRouter } from './routes/orders.js';
+import { paymentsRouter, webhooksRouter } from './routes/payments.js';
+import { ticketsRouter } from './routes/tickets.js';
 
 export type RawBodyRequest = Request & { rawBody?: Buffer };
 
@@ -29,6 +31,9 @@ export function createApp() {
 
   app.use('/api/events', eventsRouter);
   app.use('/api/orders', ordersRouter);
+  app.use('/api/tickets', ticketsRouter);
+  app.use('/api/webhooks', webhooksRouter);
+  app.use('/api/payments', paymentsRouter);
 
   app.use((_req, res) => {
     res.status(404).json({
