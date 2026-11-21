@@ -10,6 +10,8 @@
   --xp-sel: #316ac5;
   --xp-hover-amber: #e59700;
   --xp-green: #36b536;
+  --xp-font-ui: Tahoma, "Noto Sans", "Liberation Sans", sans-serif;
+  --xp-font-display: "Trebuchet MS", "Fira Sans", "Noto Sans", sans-serif;
 }
 
 * {
@@ -23,17 +25,13 @@ body {
   min-height: 100%;
   background: var(--xp-desktop);
   color: var(--xp-ink);
-  font-family: Tahoma, "MS Sans Serif", Geneva, sans-serif;
-  font-size: 13px;
+  font-family: var(--xp-font-ui);
+  font-size: 12px;
   line-height: 1.45;
 }
 
 .num {
   font-variant-numeric: tabular-nums;
-}
-
-.mono {
-  font-family: "Lucida Console", "Courier New", monospace;
 }
 
 .xp-desktop {
@@ -95,6 +93,7 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+  font-family: var(--xp-font-display);
   font-weight: 700;
   font-size: 13px;
   text-shadow: 1px 1px 0 #0a1840;
@@ -114,7 +113,7 @@ body {
   border-radius: 3px;
   background: linear-gradient(180deg, #569dff 0%, #1c5ed6 55%, #124bb8 100%);
   color: #ffffff;
-  font-family: Tahoma, sans-serif;
+  font-family: var(--xp-font-ui);
   font-weight: 700;
   font-size: 12px;
   line-height: 1;
@@ -349,6 +348,7 @@ body {
 }
 
 .xp-event-title {
+  font-family: var(--xp-font-display);
   font-size: 15px;
   font-weight: 700;
   color: var(--xp-ink);
@@ -541,9 +541,11 @@ body {
 }
 
 .ticket-code {
-  font-family: "Lucida Console", "Courier New", monospace;
+  font-family: var(--xp-font-display);
   font-size: 13px;
   font-weight: 700;
+  letter-spacing: 0.4px;
+  font-variant-numeric: tabular-nums;
 }
 
 .ticket-card-body {
@@ -582,13 +584,15 @@ body {
 }
 
 .xp-metric-val {
+  font-family: var(--xp-font-display);
   font-size: 18px;
   font-weight: 700;
   margin-top: 2px;
 }
 
 .xp-section-title {
-  font-size: 12px;
+  font-family: var(--xp-font-display);
+  font-size: 13px;
   font-weight: 700;
   color: var(--xp-blue);
   margin: 0 0 8px;

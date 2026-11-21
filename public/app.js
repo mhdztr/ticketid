@@ -195,7 +195,7 @@ function renderOrders() {
 
       return `
         <tr>
-          <td class="mono">${esc(ord.order_code)}</td>
+          <td class="num">${esc(ord.order_code)}</td>
           <td><strong>${esc(ord.event_title)}</strong> · ${ord.quantity}x ${esc(ord.ticket_category)}</td>
           <td class="num">${esc(formatIdr(ord.total_price))}</td>
           <td><span class="xp-badge ${badgeClass(ord.status)}">${esc(ord.status)}</span>${countdown}</td>
@@ -225,12 +225,20 @@ function renderTickets() {
         <div class="ticket-card-body">
           <strong>${esc(t.event_title)}</strong>
           <span>${esc(t.venue)} · ${esc(formatDate(t.event_date))}</span>
-          <span class="mono" style="color: #5a5a52">${esc(t.order_code)}</span>
+          <span class="num" style="color: #5a5a52">${esc(t.order_code)}</span>
         </div>
       </div>`
     )
     .join('');
 }
+
+const RESOLUTION_LABELS = {
+  PAID_ISSUED: 'Paid',
+  DUPLICATE_IGNORED: 'Duplicate',
+  LATE_EXPIRED_NEEDS_REFUND: 'Late (Refund)',
+  CANCELLED_NEEDS_REFUND: 'Cancelled (Refund)',
+  FAILED_IGNORED: 'Failed',
+};
 
 function renderWebhooks() {
   const tbody = el('webhooksTbody');
@@ -245,9 +253,9 @@ function renderWebhooks() {
     .map(
       (wh) => `
       <tr>
-        <td class="mono">${esc(codeById.get(wh.order_id) || wh.order_id.slice(0, 8))}</td>
+        <td class="num">${esc(codeById.get(wh.order_id) || wh.order_id.slice(0, 8))}</td>
         <td>${esc(wh.provider_status)}</td>
-        <td class="mono">${esc(wh.resolution)}</td>
+        <td title="${esc(wh.resolution)}">${esc(RESOLUTION_LABELS[wh.resolution] || wh.resolution)}</td>
         <td class="num">${esc(formatTime(wh.processed_at))}</td>
       </tr>`
     )
