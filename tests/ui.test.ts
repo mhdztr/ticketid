@@ -23,7 +23,8 @@ describe('WinXP Console UI and concurrency demo endpoint', () => {
     const htmlRes = await request(app).get('/');
     expect(htmlRes.status).toBe(200);
     expect(htmlRes.headers['content-type']).toMatch(/text\/html/);
-    expect(htmlRes.text).toContain('TicketID BoxOffice');
+    expect(htmlRes.text).toContain('<title>TicketID</title>');
+    expect(htmlRes.text).toContain('Load Test');
 
     const cssRes = await request(app).get('/xp.css');
     expect(cssRes.status).toBe(200);

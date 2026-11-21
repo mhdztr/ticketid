@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TicketID BoxOffice</title>
+    <title>TicketID</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -18,7 +18,7 @@
         id="desktopShortcut"
         type="button"
         class="xp-shortcut"
-        title="Double-click to open TicketID BoxOffice"
+        title="Double-click to open TicketID"
       >
         <svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true">
           <rect x="2" y="6" width="28" height="20" rx="2" fill="#FFF4CC" stroke="#1E3C72" stroke-width="1.5" />
@@ -26,10 +26,10 @@
           <rect x="14" y="11" width="12" height="4" fill="#0050EE" />
           <rect x="14" y="18" width="8" height="2.5" fill="#57574F" />
         </svg>
-        <span class="xp-shortcut-label">TicketID BoxOffice</span>
+        <span class="xp-shortcut-label">TicketID</span>
       </button>
 
-      <section id="appWindow" class="xp-window" aria-label="TicketID BoxOffice">
+      <section id="appWindow" class="xp-window" aria-label="TicketID">
         <header id="appTitlebar" class="xp-titlebar">
           <div class="xp-title-left">
             <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
@@ -38,7 +38,7 @@
               <rect x="8" y="6" width="5" height="2" fill="#0050EE" />
               <rect x="8" y="9" width="3" height="1" fill="#57574F" />
             </svg>
-            <span>TicketID BoxOffice</span>
+            <span>TicketID</span>
           </div>
           <div class="xp-title-buttons">
             <button id="minBtn" type="button" class="xp-caption-btn" aria-label="Minimize">_</button>
@@ -48,7 +48,7 @@
         </header>
 
         <div class="xp-header">
-          <div class="xp-tabs" role="tablist" aria-label="BoxOffice Views">
+          <div class="xp-tabs" role="tablist" aria-label="TicketID Views">
             <button type="button" class="xp-tab active" role="tab" aria-selected="true" data-tab="events" id="tabEventsBtn">
               Events
             </button>
@@ -59,7 +59,7 @@
               Tickets (0)
             </button>
             <button type="button" class="xp-tab" role="tab" aria-selected="false" data-tab="lab" id="tabLabBtn">
-              200x Test
+              Load Test
             </button>
           </div>
 
@@ -118,7 +118,7 @@
           <div id="pane-lab" class="xp-pane">
             <div class="xp-lab-bar">
               <button id="runBurstBtn" type="button" class="xp-btn xp-btn-primary">
-                Run 200 Orders (Quota 100)
+                Run Load Test (200 Orders)
               </button>
               <button id="refreshLabBtn" type="button" class="xp-btn">Refresh</button>
             </div>
@@ -207,11 +207,11 @@
         <div class="xp-form-grid">
           <label class="xp-field xp-field-full">
             <span>Title</span>
-            <input id="evTitle" type="text" class="xp-input" required minlength="2" value="Jakarta Jazz Night" />
+            <input id="evTitle" type="text" class="xp-input" required minlength="2" value="Weekend Music &amp; Art Fest" />
           </label>
           <label class="xp-field">
             <span>Venue</span>
-            <input id="evVenue" type="text" class="xp-input" required minlength="2" value="Hall A Jakarta" />
+            <input id="evVenue" type="text" class="xp-input" required minlength="2" value="Main Convention Hall" />
           </label>
           <label class="xp-field">
             <span>Date &amp; Time</span>
@@ -256,7 +256,7 @@
           <button type="button" class="xp-start-item" data-start-tab="events">Events &amp; Quotas</button>
           <button type="button" class="xp-start-item" data-start-tab="orders">My Orders</button>
           <button type="button" class="xp-start-item" data-start-tab="tickets">Issued Tickets</button>
-          <button type="button" class="xp-start-item" data-start-tab="lab">200x Stress Test</button>
+          <button type="button" class="xp-start-item" data-start-tab="lab">Load Test</button>
           <button type="button" class="xp-start-item" data-start-action="new-event">+ New Event</button>
         </div>
         <div class="xp-start-right">
@@ -302,7 +302,7 @@
             <line x1="6" y1="3" x2="6" y2="13" stroke="#1E3C72" stroke-dasharray="2 1" />
             <rect x="8" y="6" width="5" height="2" fill="#0050EE" />
           </svg>
-          <span>TicketID BoxOffice</span>
+          <span>TicketID</span>
         </button>
       </div>
 

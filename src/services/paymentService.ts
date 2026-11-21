@@ -402,9 +402,9 @@ export interface ConcurrencyDemoResult {
 
 export async function runConcurrencyDemo(): Promise<ConcurrencyDemoResult> {
   const event = await createEvent({
-    title: 'BoxOffice Burst 200',
+    title: 'Load Test Event',
     description: '200 concurrent orders against 100 REGULER tickets',
-    venue: 'Concurrency Bench',
+    venue: 'Main Venue',
     event_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
     max_tickets_per_buyer: 4,
     ticket_types: [

@@ -407,18 +407,27 @@ function updateQtyUi() {
   el('dlgTotal').textContent = formatIdr(price * state.bookQty);
 }
 
+const SAMPLE_EVENTS = [
+  { title: 'Indie Music Night', venue: 'Main Convention Hall', regPrice: 150000, vipPrice: 350000 },
+  { title: 'Tech & Design Workshop', venue: 'Auditorium B', regPrice: 100000, vipPrice: 250000 },
+  { title: 'Open-Air Film Screening', venue: 'City Park Amphitheater', regPrice: 75000, vipPrice: 175000 },
+  { title: 'Stand-Up Comedy Live', venue: 'Theater Hall 2', regPrice: 120000, vipPrice: 280000 },
+  { title: 'City Art & Craft Expo', venue: 'Exhibition Center', regPrice: 50000, vipPrice: 150000 },
+];
+
 async function seedSampleEvent() {
   el('statusMsg').textContent = 'Creating sample event...';
+  const preset = SAMPLE_EVENTS[state.events.length % SAMPLE_EVENTS.length];
   try {
     const created = await api('/api/events', {
       method: 'POST',
       body: JSON.stringify({
-        title: `Indie Night #${Math.floor(100 + Math.random() * 900)}`,
-        venue: 'Hall A Jakarta',
+        title: `${preset.title} #${Math.floor(100 + Math.random() * 900)}`,
+        venue: preset.venue,
         event_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         ticket_types: [
-          { category: 'REGULER', price: 150000, quota: 10 },
-          { category: 'VIP', price: 350000, quota: 5 },
+          { category: 'REGULER', price: preset.regPrice, quota: 10 },
+          { category: 'VIP', price: preset.vipPrice, quota: 5 },
         ],
       }),
     });
@@ -562,10 +571,10 @@ async function handleBurstDemo() {
         <div class="xp-metric-val num">${res.elapsed_ms} ms</div>
       </div>`;
     showToast(
-      `200 orders tested: ${res.created} sold, ${res.conflicts} rejected, 0 oversold`,
+      `Load test: ${res.created} sold, ${res.conflicts} rejected, 0 oversold`,
       'ok'
     );
-    el('statusMsg').textContent = `200x test finished in ${res.elapsed_ms} ms`;
+    el('statusMsg').textContent = `Load test finished in ${res.elapsed_ms} ms`;
     await refreshAll();
   } catch (err) {
     showToast(esc(err.message), 'error');

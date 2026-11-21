@@ -2,7 +2,7 @@
 
 API penjualan tiket event dengan kuota terbatas, tahan-banting terhadap pembelian bersamaan (*concurrency*), kedaluwarsa pesanan otomatis 15 menit, pembatasan kuota per pembeli, serta simulasi webhook pembayaran yang idempoten.
 
-Proyek ini juga dilengkapi **BoxOffice Web Console** bergaya klasik Windows XP di `/` untuk mencoba seluruh alur (buat event, pesan tiket, lihat sisa kuota, trigger webhook normal/duplikat/terlambat, dan uji burst 200 request) langsung dari browser.
+Proyek ini juga dilengkapi **Web Console** bergaya klasik Windows XP di `/` untuk mencoba seluruh alur tiket event umum seperti konser, seminar, bioskop, atau festival (buat event, pesan tiket, lihat sisa kuota, trigger webhook normal/duplikat/terlambat, dan load test 200 request) langsung dari browser.
 
 ---
 

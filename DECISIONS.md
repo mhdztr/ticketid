@@ -109,7 +109,7 @@ Dokumen ini merangkum keputusan teknis utama pada **TicketID**, alasan pemilihan
 ## 7. Penerbitan Kode Tiket Unik & Exactly-Once Issuance
 
 - **Keputusan**:
-  - Setiap kursi pada pesanan yang lunas mendapat kode acak CSPRNG (`crypto.randomBytes`) berawalan `TKT-` dengan alfabet base32 tanpa karakter ambigu (`0/O/1/I`) di `src/codes.ts`.
+  - Setiap tiket pada pesanan yang lunas mendapat kode acak CSPRNG (`crypto.randomBytes`) berawalan `TKT-` dengan alfabet base32 tanpa karakter ambigu (`0/O/1/I`) di `src/codes.ts`.
   - Di database, tabel `tickets` memiliki `UNIQUE (order_id, seat_seq)` dengan `seat_seq` bernomor `1..quantity` dan `ticket_code UNIQUE`.
 - **Alasan**:
   - Kode acak tidak dapat ditebak atau di-enumerate seperti integer berurutan (`TKT-0001`).
