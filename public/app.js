@@ -9,6 +9,16 @@ const state = {
   bookTarget: null,
   bookQty: 1,
   expiryRefreshSent: false,
+  muted: false,
+  balloonTimer: null,
+};
+
+const RESOLUTION_LABELS = {
+  PAID_ISSUED: 'Paid',
+  DUPLICATE_IGNORED: 'Duplicate',
+  LATE_EXPIRED_NEEDS_REFUND: 'Late (Refund)',
+  CANCELLED_NEEDS_REFUND: 'Cancelled (Refund)',
+  FAILED_IGNORED: 'Failed',
 };
 
 const el = (id) => document.getElementById(id);
@@ -67,6 +77,16 @@ function showToast(html, kind) {
   el('toastText').innerHTML = html;
 }
 
+function showBalloon(title, body) {
+  el('balloonTitle').textContent = title;
+  el('balloonBody').textContent = body;
+  el('trayBalloon').hidden = false;
+  if (state.balloonTimer) clearTimeout(state.balloonTimer);
+  state.balloonTimer = setTimeout(() => {
+    el('trayBalloon').hidden = true;
+  }, 5000);
+}
+
 async function api(path, options = {}) {
   const headers = { ...(options.headers || {}), 'X-Buyer-Id': state.buyerId };
   if (options.body && !headers['Content-Type']) {
@@ -89,7 +109,78 @@ async function api(path, options = {}) {
   return data;
 }
 
+function openWindow() {
+  const win = el('appWindow');
+  const task = el('taskWindowBtn');
+  win.classList.remove('hidden-window');
+  task.classList.remove('hidden-task');
+  task.classList.add('active');
+}
+
+function minimizeWindow() {
+  el('appWindow').classList.add('hidden-window');
+  el('taskWindowBtn').classList.remove('hidden-task', 'active');
+}
+
+function closeWindow() {
+  el('appWindow').classList.add('hidden-window');
+  el('taskWindowBtn').classList.add('hidden-task');
+  el('taskWindowBtn').classList.remove('active');
+}
+
+function centerWindow() {
+  if (window.innerWidth <= 760) return;
+  const win = el('appWindow');
+  win.classList.remove('maximized');
+  const w = Math.min(880, window.innerWidth - 120);
+  const left = Math.max(106, Math.round((window.innerWidth - w) / 2));
+  const top = 22;
+  win.style.left = `${left}px`;
+  win.style.top = `${top}px`;
+}
+
+function setupWindowDrag() {
+  const win = el('appWindow');
+  const bar = el('appTitlebar');
+  let drag = null;
+
+  bar.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0 || e.target.closest('.xp-caption-btn')) return;
+    if (window.innerWidth <= 760 || win.classList.contains('maximized')) return;
+
+    const rect = win.getBoundingClientRect();
+    drag = { offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top };
+    win.classList.add('dragging');
+    bar.setPointerCapture(e.pointerId);
+  });
+
+  bar.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    const maxX = Math.max(0, window.innerWidth - 120);
+    const maxY = Math.max(0, window.innerHeight - 64);
+    const nextX = Math.max(0, Math.min(maxX, e.clientX - drag.offsetX));
+    const nextY = Math.max(0, Math.min(maxY, e.clientY - drag.offsetY));
+    win.style.left = `${nextX}px`;
+    win.style.top = `${nextY}px`;
+  });
+
+  const endDrag = () => {
+    if (!drag) return;
+    drag = null;
+    win.classList.remove('dragging');
+  };
+
+  bar.addEventListener('pointerup', endDrag);
+  bar.addEventListener('pointercancel', endDrag);
+  bar.addEventListener('dblclick', (e) => {
+    if (e.target.closest('.xp-caption-btn')) return;
+    win.classList.toggle('maximized');
+    openWindow();
+  });
+}
+
 function switchTab(tabName) {
+  openWindow();
   document.querySelectorAll('.xp-tab').forEach((btn) => {
     const active = btn.dataset.tab === tabName;
     btn.classList.toggle('active', active);
@@ -232,14 +323,6 @@ function renderTickets() {
     .join('');
 }
 
-const RESOLUTION_LABELS = {
-  PAID_ISSUED: 'Paid',
-  DUPLICATE_IGNORED: 'Duplicate',
-  LATE_EXPIRED_NEEDS_REFUND: 'Late (Refund)',
-  CANCELLED_NEEDS_REFUND: 'Cancelled (Refund)',
-  FAILED_IGNORED: 'Failed',
-};
-
 function renderWebhooks() {
   const tbody = el('webhooksTbody');
   const recent = state.webhooks.slice(0, 20);
@@ -283,9 +366,11 @@ async function refreshAll() {
     renderOrders();
     renderTickets();
     renderWebhooks();
+    return health;
   } catch (err) {
     el('statusDb').textContent = 'DB: Error';
     el('statusMsg').textContent = err.message;
+    return null;
   }
 }
 
@@ -295,6 +380,7 @@ function switchBuyer(nextBuyer) {
   state.buyerId = clean;
   localStorage.setItem('ticketid_buyer', clean);
   el('buyerSelect').value = clean;
+  el('startUserLabel').textContent = clean;
   el('statusMsg').textContent = `Active user: ${clean}`;
   showToast('');
   refreshAll();
@@ -489,9 +575,17 @@ async function handleBurstDemo() {
 }
 
 function updateTrayClock() {
-  el('trayClock').textContent = new Date().toLocaleTimeString('en-GB', {
-    hour: '2-digit',
+  const now = new Date();
+  el('trayClock').textContent = now.toLocaleTimeString('en-US', {
+    hour: 'numeric',
     minute: '2-digit',
+    hour12: true,
+  });
+  el('trayClock').title = now.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
   });
 }
 
@@ -510,7 +604,11 @@ function init() {
     localStorage.setItem('ticketid_buyer', state.buyerId);
   }
   el('buyerSelect').value = state.buyerId;
+  el('startUserLabel').textContent = state.buyerId;
   el('statusMsg').textContent = `Active user: ${state.buyerId}`;
+
+  centerWindow();
+  setupWindowDrag();
 
   el('buyerSelect').addEventListener('change', (e) => switchBuyer(e.target.value));
 
@@ -563,22 +661,110 @@ function init() {
   el('runBurstBtn').addEventListener('click', handleBurstDemo);
   el('refreshLabBtn').addEventListener('click', refreshAll);
 
-  el('minBtn').addEventListener('click', () => {
-    el('appWindow').classList.add('minimized');
-    el('taskWindowBtn').classList.remove('active');
+  const shortcut = el('desktopShortcut');
+  shortcut.addEventListener('click', (e) => {
+    e.stopPropagation();
+    shortcut.classList.add('selected');
+  });
+  shortcut.addEventListener('dblclick', () => openWindow());
+
+  el('xpDesktop').addEventListener('click', () => {
+    shortcut.classList.remove('selected');
   });
 
+  el('minBtn').addEventListener('click', minimizeWindow);
   el('maxBtn').addEventListener('click', () => {
-    const win = el('appWindow');
-    win.classList.remove('minimized');
-    win.classList.toggle('maximized');
-    el('taskWindowBtn').classList.add('active');
+    openWindow();
+    el('appWindow').classList.toggle('maximized');
   });
+  el('closeWinBtn').addEventListener('click', closeWindow);
 
   el('taskWindowBtn').addEventListener('click', () => {
     const win = el('appWindow');
-    const minimized = win.classList.toggle('minimized');
-    el('taskWindowBtn').classList.toggle('active', !minimized);
+    if (win.classList.contains('hidden-window')) {
+      openWindow();
+    } else {
+      minimizeWindow();
+    }
+  });
+
+  const startBtn = el('startBtn');
+  const startMenu = el('startMenu');
+  startBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = startMenu.classList.toggle('open');
+    startBtn.classList.toggle('open', isOpen);
+    startBtn.setAttribute('aria-expanded', String(isOpen));
+  });
+
+  startMenu.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    const item = e.target.closest('button');
+    if (!item) return;
+
+    startMenu.classList.remove('open');
+    startBtn.classList.remove('open');
+    startBtn.setAttribute('aria-expanded', 'false');
+
+    if (item.dataset.startTab) {
+      switchTab(item.dataset.startTab);
+    } else if (item.dataset.startAction === 'new-event') {
+      openWindow();
+      el('eventDialog').showModal();
+    } else if (item.dataset.startAction === 'center') {
+      openWindow();
+      centerWindow();
+    } else if (item.dataset.startAction === 'refresh') {
+      openWindow();
+      await refreshAll();
+    } else if (item.dataset.startAction === 'health') {
+      const health = await refreshAll();
+      showBalloon(
+        'TicketID Connection',
+        health && health.db === 'up'
+          ? 'API Online · PostgreSQL 16 Connected'
+          : 'API or Database unreachable'
+      );
+    } else if (item.dataset.startAction === 'minimize') {
+      minimizeWindow();
+    }
+  });
+
+  document.addEventListener('click', () => {
+    startMenu.classList.remove('open');
+    startBtn.classList.remove('open');
+    startBtn.setAttribute('aria-expanded', 'false');
+  });
+
+  el('trayNetBtn').addEventListener('click', async (e) => {
+    e.stopPropagation();
+    const health = await refreshAll();
+    showBalloon(
+      'Local Area Connection',
+      health && health.db === 'up'
+        ? 'Status: Connected · PostgreSQL 16 (Healthy)'
+        : 'Status: Connection error'
+    );
+  });
+
+  el('trayShieldBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    showBalloon(
+      'Windows Security Center',
+      'HMAC-SHA256 webhook verification and quota locks are active'
+    );
+  });
+
+  el('traySoundBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    state.muted = !state.muted;
+    el('traySoundWaves').style.display = state.muted ? 'none' : 'inline';
+    el('traySoundMute').hidden = !state.muted;
+    el('traySoundBtn').title = state.muted ? 'Volume: Muted' : 'Volume: On';
+  });
+
+  el('balloonClose').addEventListener('click', () => {
+    el('trayBalloon').hidden = true;
   });
 
   updateTrayClock();

@@ -13,9 +13,24 @@
     <link rel="stylesheet" href="/xp.css" />
   </head>
   <body>
-    <main class="xp-desktop">
+    <main class="xp-desktop" id="xpDesktop">
+      <button
+        id="desktopShortcut"
+        type="button"
+        class="xp-shortcut"
+        title="Double-click to open TicketID BoxOffice"
+      >
+        <svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true">
+          <rect x="2" y="6" width="28" height="20" rx="2" fill="#FFF4CC" stroke="#1E3C72" stroke-width="1.5" />
+          <line x1="11" y1="6" x2="11" y2="26" stroke="#1E3C72" stroke-width="1.5" stroke-dasharray="3 2" />
+          <rect x="14" y="11" width="12" height="4" fill="#0050EE" />
+          <rect x="14" y="18" width="8" height="2.5" fill="#57574F" />
+        </svg>
+        <span class="xp-shortcut-label">TicketID BoxOffice</span>
+      </button>
+
       <section id="appWindow" class="xp-window" aria-label="TicketID BoxOffice">
-        <header class="xp-titlebar">
+        <header id="appTitlebar" class="xp-titlebar">
           <div class="xp-title-left">
             <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
               <rect x="1" y="3" width="14" height="10" fill="#FFF4CC" stroke="#1E3C72" stroke-width="1" />
@@ -28,6 +43,7 @@
           <div class="xp-title-buttons">
             <button id="minBtn" type="button" class="xp-caption-btn" aria-label="Minimize">_</button>
             <button id="maxBtn" type="button" class="xp-caption-btn" aria-label="Maximize">□</button>
+            <button id="closeWinBtn" type="button" class="xp-caption-btn xp-caption-close" aria-label="Close">×</button>
           </div>
         </header>
 
@@ -225,9 +241,99 @@
       </form>
     </dialog>
 
+    <div id="startMenu" class="xp-start-menu" role="menu" aria-label="Start Menu">
+      <div class="xp-start-top">
+        <div class="xp-start-avatar">
+          <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="8" r="4.5" fill="#1F54C9" />
+            <path d="M4 21c0-4.2 3.6-7 8-7s8 2.8 8 7" fill="#1F54C9" />
+          </svg>
+        </div>
+        <span id="startUserLabel">buyer-01</span>
+      </div>
+      <div class="xp-start-cols">
+        <div class="xp-start-left">
+          <button type="button" class="xp-start-item" data-start-tab="events">Events &amp; Quotas</button>
+          <button type="button" class="xp-start-item" data-start-tab="orders">My Orders</button>
+          <button type="button" class="xp-start-item" data-start-tab="tickets">Issued Tickets</button>
+          <button type="button" class="xp-start-item" data-start-tab="lab">200x Stress Test</button>
+          <button type="button" class="xp-start-item" data-start-action="new-event">+ New Event</button>
+        </div>
+        <div class="xp-start-right">
+          <button type="button" class="xp-start-item" data-start-action="center">Center Window</button>
+          <button type="button" class="xp-start-item" data-start-action="refresh">Refresh Data</button>
+          <button type="button" class="xp-start-item" data-start-action="health">Check API Status</button>
+        </div>
+      </div>
+      <div class="xp-start-foot">
+        <button type="button" class="xp-start-foot-btn" data-start-action="minimize">Minimize</button>
+      </div>
+    </div>
+
+    <div id="trayBalloon" class="xp-balloon" hidden>
+      <div class="xp-balloon-head">
+        <span id="balloonTitle">TicketID Network</span>
+        <button id="balloonClose" type="button" class="xp-balloon-close" aria-label="Close">×</button>
+      </div>
+      <div id="balloonBody">Connected to PostgreSQL 16</div>
+    </div>
+
     <nav class="xp-taskbar" aria-label="Taskbar">
-      <button id="taskWindowBtn" type="button" class="xp-task-btn active">TicketID BoxOffice</button>
-      <div id="trayClock" class="xp-tray num">--:--</div>
+      <div class="xp-taskbar-left">
+        <button
+          id="startBtn"
+          type="button"
+          class="xp-start-btn"
+          aria-expanded="false"
+          aria-controls="startMenu"
+        >
+          <svg width="16" height="16" viewBox="0 0 18 18" aria-hidden="true">
+            <path d="M2 3.8C4.3 2.7 6.3 2.9 8.4 3.9L7.4 8.2C5.3 7.3 3.3 7.1 1 8.1Z" fill="#F25022" />
+            <path d="M9.6 4.4C11.7 5.3 13.7 5.5 16 4.4L15 8.7C12.7 9.8 10.7 9.6 8.6 8.7Z" fill="#7FBA00" />
+            <path d="M0.7 9.5C3 8.5 5 8.7 7.1 9.6L6.1 13.9C4 13 2 12.8 -0.3 13.8Z" fill="#00A4EF" />
+            <path d="M8.3 10.1C10.4 11 12.4 11.2 14.7 10.1L13.7 14.4C11.4 15.5 9.4 15.3 7.3 14.4Z" fill="#FFB900" />
+          </svg>
+          <span>start</span>
+        </button>
+
+        <button id="taskWindowBtn" type="button" class="xp-task-btn active">
+          <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+            <rect x="1" y="3" width="14" height="10" fill="#FFF4CC" stroke="#1E3C72" stroke-width="1" />
+            <line x1="6" y1="3" x2="6" y2="13" stroke="#1E3C72" stroke-dasharray="2 1" />
+            <rect x="8" y="6" width="5" height="2" fill="#0050EE" />
+          </svg>
+          <span>TicketID BoxOffice</span>
+        </button>
+      </div>
+
+      <div class="xp-tray">
+        <span class="xp-tray-chevron" aria-hidden="true">‹</span>
+        <button id="trayNetBtn" type="button" class="xp-tray-icon-btn" title="API & Database Connection">
+          <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+            <rect x="1" y="2" width="8" height="6" fill="#DCE9FA" stroke="#143988" stroke-width="1" />
+            <rect x="2.5" y="3.5" width="5" height="3" fill="#46D146" />
+            <rect x="7" y="7" width="8" height="6" fill="#DCE9FA" stroke="#143988" stroke-width="1" />
+            <rect x="8.5" y="8.5" width="5" height="3" fill="#46D146" />
+            <line x1="5" y1="8" x2="5" y2="13" stroke="#FFFFFF" stroke-width="1" />
+            <line x1="5" y1="13" x2="11" y2="13" stroke="#FFFFFF" stroke-width="1" />
+          </svg>
+        </button>
+        <button id="trayShieldBtn" type="button" class="xp-tray-icon-btn" title="Webhook Security Status">
+          <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M8 1L14 3.5V8C14 11.6 11.4 14 8 15C4.6 14 2 11.6 2 8V3.5Z" fill="#D83B26" stroke="#FFFFFF" stroke-width="1" />
+            <rect x="3" y="4" width="5" height="4" fill="#2E7D32" />
+            <rect x="8" y="8" width="5" height="4" fill="#F9A825" />
+          </svg>
+        </button>
+        <button id="traySoundBtn" type="button" class="xp-tray-icon-btn" title="Volume: On">
+          <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true">
+            <polygon points="2,6 6,6 10,2 10,14 6,10 2,10" fill="#E8EEF7" stroke="#143988" stroke-width="1" />
+            <path id="traySoundWaves" d="M12 5C13.2 6.3 13.2 9.7 12 11M13.8 3.5C15.5 5.8 15.5 10.2 13.8 12.5" fill="none" stroke="#FFFFFF" stroke-width="1.2" />
+            <line id="traySoundMute" x1="2" y1="14" x2="14" y2="2" stroke="#FF5252" stroke-width="1.8" hidden />
+          </svg>
+        </button>
+        <span id="trayClock" class="xp-tray-clock num">--:--</span>
+      </div>
     </nav>
 
     <script src="/app.js"></script>
