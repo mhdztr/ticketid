@@ -47,7 +47,21 @@
           </div>
         </header>
 
-        <div class="xp-header">
+        <div class="xp-toolbar">
+          <label class="xp-user-wrap">
+            <span>User:</span>
+            <select id="buyerSelect" class="xp-input">
+              <option value="buyer-01">buyer-01</option>
+              <option value="buyer-02">buyer-02</option>
+              <option value="buyer-03">buyer-03</option>
+              <option value="buyer-04">buyer-04</option>
+              <option value="buyer-05">buyer-05</option>
+            </select>
+          </label>
+          <button id="openNewEventBtn" type="button" class="xp-btn xp-btn-primary">+ New Event</button>
+        </div>
+
+        <div class="xp-sheet-wrap">
           <div class="xp-tabs" role="tablist" aria-label="TicketID Views">
             <button type="button" class="xp-tab active" role="tab" aria-selected="true" data-tab="events" id="tabEventsBtn">
               Events
@@ -63,23 +77,8 @@
             </button>
           </div>
 
-          <div class="xp-header-right">
-            <label class="xp-user-wrap">
-              <span>User:</span>
-              <select id="buyerSelect" class="xp-input">
-                <option value="buyer-01">buyer-01</option>
-                <option value="buyer-02">buyer-02</option>
-                <option value="buyer-03">buyer-03</option>
-                <option value="buyer-04">buyer-04</option>
-                <option value="buyer-05">buyer-05</option>
-              </select>
-            </label>
-            <button id="openNewEventBtn" type="button" class="xp-btn xp-btn-primary">+ New Event</button>
-          </div>
-        </div>
-
-        <div class="xp-canvas">
-          <div id="toast" class="xp-toast" hidden>
+          <div class="xp-canvas">
+            <div id="toast" class="xp-toast" hidden>
             <span id="toastText"></span>
             <button id="toastClose" type="button" class="xp-toast-close" aria-label="Dismiss">×</button>
           </div>
@@ -159,11 +158,13 @@
               </table>
             </div>
           </div>
+          </div>
         </div>
 
         <footer class="xp-statusbar">
           <div id="statusMsg" class="xp-status-cell">Ready</div>
           <div id="statusDb" class="xp-status-cell">DB: Checking</div>
+          <span class="xp-resize-grip" aria-hidden="true"></span>
         </footer>
       </section>
     </main>
