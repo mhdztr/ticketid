@@ -2,6 +2,7 @@
 
 const state = {
   buyerId: localStorage.getItem('ticketid_buyer') || 'buyer-01',
+  selectedTierKey: null,
   events: [],
   orders: [],
   tickets: [],
@@ -191,57 +192,113 @@ function switchTab(tabName) {
   });
 }
 
+function getSelectedTier() {
+  if (!state.selectedTierKey) return null;
+  for (const ev of state.events) {
+    for (const tt of ev.ticket_types) {
+      if (`${ev.id}:${tt.id}` === state.selectedTierKey) {
+        return { event: ev, tier: tt };
+      }
+    }
+  }
+  return null;
+}
+
+function updateEventSelectionUi() {
+  const container = el('eventsContainer');
+  if (container) {
+    container.querySelectorAll('tr.xp-lv-row').forEach((row) => {
+      const key = `${row.dataset.rowEvent}:${row.dataset.rowTier}`;
+      row.classList.toggle('selected', key === state.selectedTierKey);
+    });
+  }
+
+  const sel = getSelectedTier();
+  const info = el('eventsSelectionInfo');
+  const buyBtn = el('buySelectedBtn');
+  if (sel) {
+    const quotaText =
+      sel.tier.available_quota > 0
+        ? `${sel.tier.available_quota} / ${sel.tier.total_quota} left`
+        : 'Sold out';
+    if (info) {
+      info.textContent = `${sel.event.title} · ${sel.tier.category} · ${formatIdr(sel.tier.price)} (${quotaText})`;
+    }
+    if (buyBtn) buyBtn.disabled = sel.tier.available_quota <= 0;
+  } else {
+    if (info) info.textContent = 'Select an event tier to book';
+    if (buyBtn) buyBtn.disabled = true;
+  }
+}
+
 function renderEvents() {
   const container = el('eventsContainer');
   if (state.events.length === 0) {
+    state.selectedTierKey = null;
     container.innerHTML = `
-      <div class="xp-empty">
-        <div>No events yet</div>
-        <div class="xp-empty-actions">
-          <button type="button" class="xp-btn xp-btn-primary" data-empty-action="new">+ New Event</button>
-          <button type="button" class="xp-btn" data-empty-action="seed">Add Sample Event</button>
-        </div>
-      </div>`;
+      <tr class="xp-lv-empty-row">
+        <td colspan="5" class="xp-empty">
+          <div>No events yet</div>
+          <div class="xp-empty-actions">
+            <button type="button" class="xp-btn xp-btn-primary" data-empty-action="new">+ New Event</button>
+            <button type="button" class="xp-btn" data-empty-action="seed">Add Sample Event</button>
+          </div>
+        </td>
+      </tr>`;
+    updateEventSelectionUi();
     return;
   }
 
-  container.innerHTML = state.events
-    .map((ev) => {
-      const tiers = ev.ticket_types
-        .map((tt) => {
-          const pct = tt.total_quota > 0 ? Math.round((tt.available_quota / tt.total_quota) * 100) : 0;
-          const soldOut = tt.available_quota <= 0;
-          return `
-            <div class="xp-tier-bar">
-              <div class="xp-tier-top">
-                <span class="xp-tier-name">${esc(tt.category)}</span>
-                <span class="xp-tier-price num">${esc(formatIdr(tt.price))}</span>
-              </div>
-              <div class="xp-tier-bottom">
-                <div class="xp-progress"><div class="xp-progress-fill" style="width: ${pct}%"></div></div>
-                <span class="xp-tier-count num">${tt.available_quota} / ${tt.total_quota}</span>
-                <button
-                  type="button"
-                  class="xp-btn xp-btn-sm xp-btn-primary"
-                  data-buy-event="${esc(ev.id)}"
-                  data-buy-tier="${esc(tt.id)}"
-                  ${soldOut ? 'disabled' : ''}
-                >${soldOut ? 'Sold out' : 'Buy'}</button>
-              </div>
-            </div>`;
-        })
-        .join('');
+  const rows = [];
+  for (const ev of state.events) {
+    for (const tt of ev.ticket_types) {
+      rows.push({ ev, tt });
+    }
+  }
 
+  if (!getSelectedTier() && rows.length > 0) {
+    const firstAvail = rows.find((r) => r.tt.available_quota > 0) || rows[0];
+    state.selectedTierKey = `${firstAvail.ev.id}:${firstAvail.tt.id}`;
+  }
+
+  container.innerHTML = rows
+    .map(({ ev, tt }) => {
+      const pct = tt.total_quota > 0 ? Math.round((tt.available_quota / tt.total_quota) * 100) : 0;
+      const soldOut = tt.available_quota <= 0;
+      const key = `${ev.id}:${tt.id}`;
+      const selected = key === state.selectedTierKey;
       return `
-        <article class="xp-event-row">
-          <div class="xp-event-head">
-            <span class="xp-event-title">${esc(ev.title)}</span>
-            <span class="xp-event-meta">${esc(ev.venue)} · ${esc(formatDate(ev.event_date))}</span>
-          </div>
-          <div class="xp-tiers">${tiers}</div>
-        </article>`;
+        <tr
+          class="xp-lv-row${selected ? ' selected' : ''}${soldOut ? ' sold-out' : ''}"
+          tabindex="0"
+          data-row-event="${esc(ev.id)}"
+          data-row-tier="${esc(tt.id)}"
+        >
+          <td>
+            <span class="xp-lv-name">
+              <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+                <rect x="1" y="3" width="14" height="10" fill="#FFF4CC" stroke="#1E3C72" stroke-width="1" />
+                <line x1="6" y1="3" x2="6" y2="13" stroke="#1E3C72" stroke-dasharray="2 1" />
+                <rect x="8" y="6" width="5" height="2" fill="#0050EE" />
+                <rect x="8" y="9" width="3" height="1" fill="#57574F" />
+              </svg>
+              <span>${esc(ev.title)}</span>
+            </span>
+          </td>
+          <td>${esc(ev.venue)} · ${esc(formatDate(ev.event_date))}</td>
+          <td>${esc(tt.category)}</td>
+          <td class="num">${esc(formatIdr(tt.price))}</td>
+          <td>
+            <div class="xp-lv-quota">
+              <div class="xp-progress"><div class="xp-progress-fill" style="width: ${pct}%"></div></div>
+              <span class="xp-tier-count num">${tt.available_quota} / ${tt.total_quota}</span>
+            </div>
+          </td>
+        </tr>`;
     })
     .join('');
+
+  updateEventSelectionUi();
 }
 
 function badgeClass(status) {
@@ -380,7 +437,6 @@ function switchBuyer(nextBuyer) {
   state.buyerId = clean;
   localStorage.setItem('ticketid_buyer', clean);
   el('buyerSelect').value = clean;
-  el('startUserLabel').textContent = clean;
   el('statusMsg').textContent = `Active user: ${clean}`;
   showToast('');
   refreshAll();
@@ -613,7 +669,6 @@ function init() {
     localStorage.setItem('ticketid_buyer', state.buyerId);
   }
   el('buyerSelect').value = state.buyerId;
-  el('startUserLabel').textContent = state.buyerId;
   el('statusMsg').textContent = `Active user: ${state.buyerId}`;
 
   centerWindow();
@@ -631,19 +686,63 @@ function init() {
   });
   el('toastClose').addEventListener('click', () => showToast(''));
 
-  el('eventsContainer').addEventListener('click', (e) => {
-    const buyBtn = e.target.closest('button[data-buy-tier]');
-    if (buyBtn) {
-      openBookDialog(buyBtn.dataset.buyEvent, buyBtn.dataset.buyTier);
-      return;
-    }
+  const eventsContainer = el('eventsContainer');
+  eventsContainer.addEventListener('click', (e) => {
     const emptyBtn = e.target.closest('button[data-empty-action]');
     if (emptyBtn && emptyBtn.dataset.emptyAction === 'new') {
       el('eventDialog').showModal();
-    } else if (emptyBtn && emptyBtn.dataset.emptyAction === 'seed') {
+      return;
+    }
+    if (emptyBtn && emptyBtn.dataset.emptyAction === 'seed') {
       seedSampleEvent();
+      return;
+    }
+    const row = e.target.closest('tr.xp-lv-row');
+    if (!row) return;
+    state.selectedTierKey = `${row.dataset.rowEvent}:${row.dataset.rowTier}`;
+    updateEventSelectionUi();
+  });
+
+  eventsContainer.addEventListener('dblclick', (e) => {
+    const row = e.target.closest('tr.xp-lv-row');
+    if (!row) return;
+    state.selectedTierKey = `${row.dataset.rowEvent}:${row.dataset.rowTier}`;
+    updateEventSelectionUi();
+    const sel = getSelectedTier();
+    if (sel && sel.tier.available_quota > 0) {
+      openBookDialog(sel.event.id, sel.tier.id);
     }
   });
+
+  eventsContainer.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      const list = Array.from(eventsContainer.querySelectorAll('tr.xp-lv-row'));
+      if (list.length === 0) return;
+      e.preventDefault();
+      const idx = list.findIndex((r) => `${r.dataset.rowEvent}:${r.dataset.rowTier}` === state.selectedTierKey);
+      const nextIdx =
+        idx < 0 ? 0 : Math.max(0, Math.min(list.length - 1, idx + (e.key === 'ArrowDown' ? 1 : -1)));
+      const nextRow = list[nextIdx];
+      state.selectedTierKey = `${nextRow.dataset.rowEvent}:${nextRow.dataset.rowTier}`;
+      updateEventSelectionUi();
+      nextRow.focus();
+    } else if (e.key === 'Enter') {
+      const sel = getSelectedTier();
+      if (sel && sel.tier.available_quota > 0) {
+        e.preventDefault();
+        openBookDialog(sel.event.id, sel.tier.id);
+      }
+    }
+  });
+
+  el('buySelectedBtn').addEventListener('click', () => {
+    const sel = getSelectedTier();
+    if (sel && sel.tier.available_quota > 0) {
+      openBookDialog(sel.event.id, sel.tier.id);
+    }
+  });
+
+  el('refreshEventsBtn').addEventListener('click', refreshAll);
 
   el('qtyButtons').addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-qty]');

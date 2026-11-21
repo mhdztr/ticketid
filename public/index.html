@@ -4,12 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>TicketID</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@600;700&family=Noto+Sans:wght@400;600;700&display=swap"
-    />
     <link rel="stylesheet" href="/xp.css" />
   </head>
   <body>
@@ -41,13 +35,20 @@
             <span>TicketID</span>
           </div>
           <div class="xp-title-buttons">
-            <button id="minBtn" type="button" class="xp-caption-btn" aria-label="Minimize">_</button>
-            <button id="maxBtn" type="button" class="xp-caption-btn" aria-label="Maximize">□</button>
-            <button id="closeWinBtn" type="button" class="xp-caption-btn xp-caption-close" aria-label="Close">×</button>
+            <button id="minBtn" type="button" class="xp-caption-btn" aria-label="Minimize">
+              <svg width="9" height="9" viewBox="0 0 9 9" aria-hidden="true"><rect x="1" y="6" width="6" height="2" fill="#FFFFFF" /></svg>
+            </button>
+            <button id="maxBtn" type="button" class="xp-caption-btn" aria-label="Maximize">
+              <svg width="9" height="9" viewBox="0 0 9 9" aria-hidden="true"><path d="M1 1h7v7H1V1zm1 2v4h5V3H2z" fill="#FFFFFF" /></svg>
+            </button>
+            <button id="closeWinBtn" type="button" class="xp-caption-btn xp-caption-close" aria-label="Close">
+              <svg width="9" height="9" viewBox="0 0 9 9" aria-hidden="true"><path d="M1.5 1.5l6 6m0-6l-6 6" stroke="#FFFFFF" stroke-width="1.7" stroke-linecap="square" /></svg>
+            </button>
           </div>
         </header>
 
         <div class="xp-toolbar">
+          <span class="xp-rebar-grip" aria-hidden="true"></span>
           <label class="xp-user-wrap">
             <span>User:</span>
             <select id="buyerSelect" class="xp-input">
@@ -58,6 +59,7 @@
               <option value="buyer-05">buyer-05</option>
             </select>
           </label>
+          <span class="xp-toolbar-sep" aria-hidden="true"></span>
           <button id="openNewEventBtn" type="button" class="xp-btn xp-btn-primary">+ New Event</button>
         </div>
 
@@ -84,8 +86,30 @@
           </div>
 
           <div id="pane-events" class="xp-pane active">
-            <div id="eventsContainer" class="xp-event-list">
-              <div class="xp-empty">Loading events...</div>
+            <div class="xp-listview-shell">
+              <div class="xp-table-wrap xp-listview-wrap">
+                <table class="xp-table xp-listview">
+                  <thead>
+                    <tr>
+                      <th>Event <span class="xp-sort-arrow" aria-hidden="true">▲</span></th>
+                      <th>Venue &amp; Date</th>
+                      <th>Tier</th>
+                      <th class="num">Price</th>
+                      <th>Quota</th>
+                    </tr>
+                  </thead>
+                  <tbody id="eventsContainer">
+                    <tr><td colspan="5" class="xp-empty">Loading events...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="xp-lv-footer">
+                <span id="eventsSelectionInfo" class="xp-lv-hint">Select an event tier to book</span>
+                <div class="xp-lv-buttons">
+                  <button id="refreshEventsBtn" type="button" class="xp-btn">Refresh</button>
+                  <button id="buySelectedBtn" type="button" class="xp-btn xp-btn-primary" disabled>Buy Tickets...</button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -172,7 +196,9 @@
     <dialog id="bookDialog" class="xp-dialog" aria-labelledby="bookDialogTitle">
       <div class="xp-titlebar">
         <div id="bookDialogTitle" class="xp-title-left">Book Tickets</div>
-        <button id="closeBookDialogBtn" type="button" class="xp-caption-btn xp-caption-close" aria-label="Close">×</button>
+        <button id="closeBookDialogBtn" type="button" class="xp-caption-btn xp-caption-close" aria-label="Close">
+          <svg width="9" height="9" viewBox="0 0 9 9" aria-hidden="true"><path d="M1.5 1.5l6 6m0-6l-6 6" stroke="#FFFFFF" stroke-width="1.7" stroke-linecap="square" /></svg>
+        </button>
       </div>
       <form id="bookForm" class="xp-dialog-body">
         <div>
@@ -202,7 +228,9 @@
     <dialog id="eventDialog" class="xp-dialog" aria-labelledby="eventDialogTitle">
       <div class="xp-titlebar">
         <div id="eventDialogTitle" class="xp-title-left">New Event</div>
-        <button id="closeEventDialogBtn" type="button" class="xp-caption-btn xp-caption-close" aria-label="Close">×</button>
+        <button id="closeEventDialogBtn" type="button" class="xp-caption-btn xp-caption-close" aria-label="Close">
+          <svg width="9" height="9" viewBox="0 0 9 9" aria-hidden="true"><path d="M1.5 1.5l6 6m0-6l-6 6" stroke="#FFFFFF" stroke-width="1.7" stroke-linecap="square" /></svg>
+        </button>
       </div>
       <form id="eventForm" class="xp-dialog-body">
         <div class="xp-form-grid">
@@ -250,7 +278,7 @@
             <path d="M4 21c0-4.2 3.6-7 8-7s8 2.8 8 7" fill="#1F54C9" />
           </svg>
         </div>
-        <span id="startUserLabel">buyer-01</span>
+        <span id="startUserLabel">mhdztr</span>
       </div>
       <div class="xp-start-cols">
         <div class="xp-start-left">
@@ -288,7 +316,7 @@
           aria-expanded="false"
           aria-controls="startMenu"
         >
-          <svg width="16" height="16" viewBox="0 0 18 18" aria-hidden="true">
+          <svg width="16" height="16" viewBox="-1 1 18 16" aria-hidden="true">
             <path d="M2 3.8C4.3 2.7 6.3 2.9 8.4 3.9L7.4 8.2C5.3 7.3 3.3 7.1 1 8.1Z" fill="#F25022" />
             <path d="M9.6 4.4C11.7 5.3 13.7 5.5 16 4.4L15 8.7C12.7 9.8 10.7 9.6 8.6 8.7Z" fill="#7FBA00" />
             <path d="M0.7 9.5C3 8.5 5 8.7 7.1 9.6L6.1 13.9C4 13 2 12.8 -0.3 13.8Z" fill="#00A4EF" />
